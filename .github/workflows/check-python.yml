@@ -1,0 +1,46 @@
+name: Check Python
+
+concurrency:
+  group: check-python-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    name: pytest (unit tests)
+    runs-on: SubtensorCI
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-python') }}
+    env:
+      RUST_BACKTRACE: full
+    steps:
+      - name: Check-out repository under $GITHUB_WORKSPACE
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update &&
+          sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Utilize Shared Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install maturin and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install maturin pytest
+
+      - name: Build and install package
+        run: maturin develop --features extension-module
+
+      - name: Run Python unit tests
+        run: pytest tests/ -v
