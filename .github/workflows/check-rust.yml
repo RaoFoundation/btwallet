@@ -173,6 +173,64 @@ jobs:
               echo "No changes detected after running 'cargo fix --workspace' ✅"
           fi
 
+  cargo-check-no-python:
+    name: cargo check (no python)
+    runs-on: SubtensorCI
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
+    env:
+      RUST_BACKTRACE: full
+    steps:
+      - name: Check-out repository under $GITHUB_WORKSPACE
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update &&
+          sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler
+
+      - name: Utilize Shared Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo check --no-default-features
+        run: cargo check --no-default-features
+
+      - name: cargo test --no-default-features --lib
+        run: cargo test --no-default-features --lib
+
+  python-unit-tests:
+    name: pytest (unit tests)
+    runs-on: SubtensorCI
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
+    env:
+      RUST_BACKTRACE: full
+    steps:
+      - name: Check-out repository under $GITHUB_WORKSPACE
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update &&
+          sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Utilize Shared Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install maturin and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install maturin pytest
+
+      - name: Build and install package
+        run: maturin develop --features extension-module
+
+      - name: Run Python unit tests
+        run: pytest tests/ -v
+
   check-feature-propagation:
     name: zepter run check
     runs-on: SubtensorCI
