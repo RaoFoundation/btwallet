@@ -1,13 +1,22 @@
-name: Build wheels
+name: Release
 
 on:
   push:
     branches:
       - main
     tags:
-      - '*'
+      - 'v*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_target:
+        description: "What to publish (both, crate-only, pypi-only)"
+        type: choice
+        options:
+          - both
+          - crate-only
+          - pypi-only
+        default: both
 
 permissions:
   contents: read
@@ -110,12 +119,60 @@ jobs:
           name: wheels-sdist
           path: dist
 
-  release:
-    name: Release
+  # Publish Rust crate to crates.io (gate for PyPI on full release)
+  release-crate:
+    name: Publish to crates.io
     runs-on: ubuntu-latest
     environment: release
-    if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
-    needs: [linux, macos, sdist]
+    if: >-
+      (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
+      && (github.event.inputs.publish_target != 'pypi-only')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update &&
+          sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler pkg-config
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify crate version matches tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          CRATE_VERSION="v$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')"
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          if [ "$CRATE_VERSION" != "$TAG_NAME" ]; then
+            echo "::error::Crate version ($CRATE_VERSION) does not match tag ($TAG_NAME)"
+            exit 1
+          fi
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Publish Python wheels to PyPI
+  release-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment: release
+    needs:
+      - linux
+      - macos
+      - sdist
+      # Gate: require crate publish first on full release / crate-only won't trigger this
+      # For pypi-only, release-crate is skipped so this condition is satisfied
+      - release-crate
+    if: >-
+      always()
+      && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
+      && (github.event.inputs.publish_target != 'crate-only')
+      && (needs.linux.result == 'success')
+      && (needs.macos.result == 'success')
+      && (needs.sdist.result == 'success')
+      && (needs.release-crate.result == 'success' || needs.release-crate.result == 'skipped')
     permissions:
       # Use to sign the release artifacts
       id-token: write
@@ -130,7 +187,6 @@ jobs:
         with:
           subject-path: 'wheels-*/*'
       - name: Publish to PyPI
-        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
         uses: PyO3/maturin-action@v1.49.4
         with:
           command: upload
