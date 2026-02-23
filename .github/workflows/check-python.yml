@@ -1,5 +1,8 @@
 name: Check Python
 
+permissions:
+  contents: read
+
 concurrency:
   group: check-python-${{ github.ref }}
   cancel-in-progress: true

@@ -1,5 +1,8 @@
 name: Check Rust
 
+permissions:
+  contents: read
+
 concurrency:
   group: check-rust-${{ github.ref }}
   cancel-in-progress: true
