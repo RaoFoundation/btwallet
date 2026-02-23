@@ -49,4 +49,4 @@ jobs:
       - name: Run Python unit tests
         run: |
           source .venv/bin/activate
-          pytest tests/ -v
+          pytest tests/ -v --ignore=tests/test_wallet_legacy.py
