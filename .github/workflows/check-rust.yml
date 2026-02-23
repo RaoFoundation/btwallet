@@ -24,7 +24,7 @@ jobs:
   # runs cargo fmt
   cargo-fmt:
     name: cargo fmt
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -48,7 +48,7 @@ jobs:
 
   cargo-clippy-default-features:
     name: cargo clippy
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -70,7 +70,7 @@ jobs:
 
   cargo-check-lints:
     name: check custom lints
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUSTFLAGS: -D warnings
@@ -97,7 +97,7 @@ jobs:
 
   cargo-clippy-all-features:
     name: cargo clippy --all-features
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -120,7 +120,7 @@ jobs:
   # runs cargo test --workspace --all-features
   cargo-test:
     name: cargo test
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -143,7 +143,7 @@ jobs:
   # ensures cargo fix has no trivial changes that can be applied
   cargo-fix:
     name: cargo fix
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -175,7 +175,7 @@ jobs:
 
   cargo-check-no-python:
     name: cargo check (no python)
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -199,7 +199,7 @@ jobs:
 
   cargo-package-check:
     name: cargo package (dry-run)
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -220,7 +220,7 @@ jobs:
 
   check-feature-propagation:
     name: zepter run check
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     steps:
       - name: Checkout

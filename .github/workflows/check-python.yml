@@ -13,7 +13,7 @@ on:
 jobs:
   pytest:
     name: pytest (unit tests)
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-python') }}
     env:
       RUST_BACKTRACE: full
