@@ -1,4 +1,3 @@
-use pyo3::pyfunction;
 use sp_core::crypto::{AccountId32, Ss58Codec};
 use std::str;
 
@@ -25,7 +24,6 @@ pub fn get_ss58_format(ss58_address: &str) -> Result<u16, &'static str> {
 ///         address (str): The address to check.
 ///     Returns:
 ///         ``True`` if the address is a valid ss58 address for Bittensor, ``False`` otherwise.
-#[pyfunction]
 pub fn is_valid_ss58_address(address: &str) -> bool {
     if address.is_empty() {
         // Possibly there could be a debug log, but not a print
@@ -82,7 +80,6 @@ pub fn are_bytes_valid_ed25519_pubkey(public_key: &[u8]) -> bool {
 ///         address (str): The address to check.
 ///     Returns:
 ///         valid (bool): ``True`` if the address is a valid destination address, ``False`` otherwise.
-#[pyfunction]
 pub fn is_valid_bittensor_address_or_public_key(address: &str) -> bool {
     if address.starts_with("0x") {
         // Convert hex string to bytes
@@ -96,6 +93,9 @@ pub fn is_valid_bittensor_address_or_public_key(address: &str) -> bool {
     }
 }
 
+/// When running inside a Python process, output must go through Python's `sys.stdout`
+/// to stay synchronized with Python-level I/O (e.g. Jupyter, logging redirects).
+/// In pure Rust mode, standard stdout is used directly.
 #[cfg(not(feature = "python-bindings"))]
 pub fn print(s: String) {
     use std::io::{self, Write};
@@ -105,19 +105,20 @@ pub fn print(s: String) {
 
 #[cfg(feature = "python-bindings")]
 pub fn print(s: String) {
-    pyo3::Python::with_gil(|py| {
-        let locals = PyDict::new_bound(py);
+    use pyo3::types::{PyDict, PyDictMethods};
+    use std::ffi::CString;
+    pyo3::Python::attach(|py| {
+        let locals = PyDict::new(py);
         locals.set_item("s", s).unwrap();
-        py.run_bound(
+        let code = CString::new(
             r#"
 import sys
 print(s, end='')
 sys.stdout.flush()
 "#,
-            None,
-            Some(&locals),
         )
         .unwrap();
+        py.run(&code, None, Some(&locals)).unwrap();
     });
 }
 

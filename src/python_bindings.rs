@@ -573,7 +573,31 @@ fn py_decrypt_keyfile_data(
         .map_err(|e| PyErr::new::<PyKeyFileError, _>(e))
 }
 
-// keyfile module with functions
+#[pyfunction(name = "keyfile_data_is_encrypted_nacl")]
+fn py_keyfile_data_is_encrypted_nacl(keyfile_data: &[u8]) -> bool {
+    keyfile::keyfile_data_is_encrypted_nacl(keyfile_data)
+}
+
+#[pyfunction(name = "keyfile_data_is_encrypted_ansible")]
+fn py_keyfile_data_is_encrypted_ansible(keyfile_data: &[u8]) -> bool {
+    keyfile::keyfile_data_is_encrypted_ansible(keyfile_data)
+}
+
+#[pyfunction(name = "keyfile_data_is_encrypted_legacy")]
+fn py_keyfile_data_is_encrypted_legacy(keyfile_data: &[u8]) -> bool {
+    keyfile::keyfile_data_is_encrypted_legacy(keyfile_data)
+}
+
+#[pyfunction(name = "keyfile_data_is_encrypted")]
+fn py_keyfile_data_is_encrypted(keyfile_data: &[u8]) -> bool {
+    keyfile::keyfile_data_is_encrypted(keyfile_data)
+}
+
+#[pyfunction(name = "keyfile_data_encryption_method")]
+fn py_keyfile_data_encryption_method(keyfile_data: &[u8]) -> String {
+    keyfile::keyfile_data_encryption_method(keyfile_data)
+}
+
 fn register_keyfile_module(main_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let keyfile_module = PyModule::new(main_module.py(), "keyfile")?;
     keyfile_module.add_function(wrap_pyfunction!(
@@ -587,23 +611,23 @@ fn register_keyfile_module(main_module: &Bound<'_, PyModule>) -> PyResult<()> {
     keyfile_module.add_function(wrap_pyfunction!(py_validate_password, &keyfile_module)?)?;
     keyfile_module.add_function(wrap_pyfunction!(py_ask_password, &keyfile_module)?)?;
     keyfile_module.add_function(wrap_pyfunction!(
-        keyfile::keyfile_data_is_encrypted_nacl,
+        py_keyfile_data_is_encrypted_nacl,
         &keyfile_module
     )?)?;
     keyfile_module.add_function(wrap_pyfunction!(
-        keyfile::keyfile_data_is_encrypted_ansible,
+        py_keyfile_data_is_encrypted_ansible,
         &keyfile_module
     )?)?;
     keyfile_module.add_function(wrap_pyfunction!(
-        keyfile::keyfile_data_is_encrypted_legacy,
+        py_keyfile_data_is_encrypted_legacy,
         &keyfile_module
     )?)?;
     keyfile_module.add_function(wrap_pyfunction!(
-        keyfile::keyfile_data_is_encrypted,
+        py_keyfile_data_is_encrypted,
         &keyfile_module
     )?)?;
     keyfile_module.add_function(wrap_pyfunction!(
-        keyfile::keyfile_data_encryption_method,
+        py_keyfile_data_encryption_method,
         &keyfile_module
     )?)?;
     keyfile_module.add_function(wrap_pyfunction!(
@@ -678,18 +702,15 @@ fn py_is_valid_bittensor_address_or_public_key(address: &Bound<'_, PyAny>) -> bo
     })
 }
 
+#[pyfunction(name = "is_valid_ss58_address")]
+fn py_is_valid_ss58_address(address: &str) -> bool {
+    crate::utils::is_valid_ss58_address(address)
+}
+
 fn register_utils_module(main_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let utils_module = PyModule::new(main_module.py(), "utils")?;
-    utils_module.add_function(wrap_pyfunction!(
-        crate::utils::is_valid_ss58_address,
-        &utils_module
-    )?)?;
-
+    utils_module.add_function(wrap_pyfunction!(py_is_valid_ss58_address, &utils_module)?)?;
     utils_module.add_function(wrap_pyfunction!(py_get_ss58_format, &utils_module)?)?;
-    utils_module.add_function(wrap_pyfunction!(
-        crate::utils::is_valid_ss58_address,
-        &utils_module
-    )?)?;
     utils_module.add_function(wrap_pyfunction!(py_is_valid_ed25519_pubkey, &utils_module)?)?;
     utils_module.add_function(wrap_pyfunction!(
         py_is_valid_bittensor_address_or_public_key,
@@ -699,12 +720,14 @@ fn register_utils_module(main_module: &Bound<'_, PyModule>) -> PyResult<()> {
     main_module.add_submodule(&utils_module)
 }
 
+#[pyfunction(name = "display_mnemonic_msg")]
+fn py_display_mnemonic_msg(mnemonic: String, key_type: &str) {
+    crate::wallet::display_mnemonic_msg(mnemonic, key_type)
+}
+
 fn register_wallet_module(main_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let wallet_module = PyModule::new(main_module.py(), "wallet")?;
-    wallet_module.add_function(wrap_pyfunction!(
-        crate::wallet::display_mnemonic_msg,
-        &wallet_module
-    )?)?;
+    wallet_module.add_function(wrap_pyfunction!(py_display_mnemonic_msg, &wallet_module)?)?;
     wallet_module.add_class::<Wallet>()?;
     main_module.add_submodule(&wallet_module)
 }
