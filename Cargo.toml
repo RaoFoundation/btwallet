@@ -46,6 +46,10 @@ version = "0.9"
 optional = true
 features = ["vendored"]
 
+[package.metadata.docs.rs]
+features = ["vendored-openssl"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
 default = []
 python-bindings = ["dep:pyo3"]
