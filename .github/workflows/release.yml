@@ -52,6 +52,7 @@ jobs:
           args: >-
             --release
             --out dist
+            --bindings pyo3
             --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
             ${{ matrix.platform.target == 'aarch64' && '--features vendored-openssl' || '' }}
           sccache: 'true'
@@ -81,9 +82,9 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64
-          - runner: macos-14
+          - runner: macos-latest
             target: aarch64
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +96,7 @@ jobs:
         uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
+          args: --release --out dist --bindings pyo3 --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
