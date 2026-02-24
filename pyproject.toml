@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 keywords = ["substrate", "scale", "codec", "bittensor", "wallet"]
 
 dependencies = []
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 
 authors = [{ name = "Roman Chkhaidze", email = "r@latent.to" }]
 maintainers = [{ name = "Cortex Team", email = "cortex@opentensor.dev" }]
