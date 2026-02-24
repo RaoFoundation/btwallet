@@ -143,14 +143,12 @@ impl Wallet {
             env::var("BT_WALLET_PATH").unwrap_or_else(|_| BT_WALLET_PATH.to_string());
         let default_path_static: &'static str = Box::leak(default_path.into_boxed_str());
 
-        let parser = parser.arg(
+        parser.arg(
             clap::Arg::new("wallet.path")
                 .long("wallet.path")
                 .default_value(default_path_static)
                 .help("The path to your Bittensor wallets"),
-        );
-
-        parser
+        )
     }
 
     /// Checks for existing coldkeypub, hotkeypub, hotkeys, and creates them if non-existent.
@@ -169,6 +167,7 @@ impl Wallet {
     ///         `Wallet` - The wallet instance with created keys.
     ///     Raises:
     ///         WalletError: If key generation or file operations fail.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_if_non_existent(
         &mut self,
         coldkey_use_password: bool,
@@ -209,7 +208,7 @@ impl Wallet {
     ///
     ///     Raises:
     ///         WalletError: If key generation or file operations fail.
-    #[allow(clippy::bool_comparison)]
+    #[allow(clippy::bool_comparison, clippy::too_many_arguments)]
     pub fn create(
         &mut self,
         coldkey_use_password: bool,
@@ -273,6 +272,7 @@ impl Wallet {
     ///
     ///     Raises:
     ///         WalletError: If key generation or file operations fail.
+    #[allow(clippy::too_many_arguments)]
     pub fn recreate(
         &mut self,
         coldkey_use_password: bool,
@@ -1026,6 +1026,7 @@ impl Wallet {
     ///         `Wallet` - The wallet instance with regenerated hotkey.
     ///     Raises:
     ///         KeyFileError: If key generation or file operations fail.
+    #[allow(clippy::too_many_arguments)]
     pub fn regenerate_hotkey(
         &mut self,
         mnemonic: Option<String>,

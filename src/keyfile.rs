@@ -96,16 +96,16 @@ pub fn deserialize_keypair_from_keyfile_data(keyfile_data: &[u8]) -> Result<Keyp
 
     // Create the `Keypair` based on the available data
     if let Some(secret_phrase) = secret_phrase {
-        Keypair::create_from_mnemonic(secret_phrase.as_str()).map_err(|e| KeyFileError::Generic(e))
+        Keypair::create_from_mnemonic(secret_phrase.as_str()).map_err(KeyFileError::Generic)
     } else if let Some(seed) = secret_seed {
         // Remove 0x prefix if present
         let seed = seed.trim_start_matches("0x");
         let seed_bytes = hex::decode(seed).map_err(|e| KeyFileError::Generic(e.to_string()))?;
-        Keypair::create_from_seed(seed_bytes).map_err(|e| KeyFileError::Generic(e))
+        Keypair::create_from_seed(seed_bytes).map_err(KeyFileError::Generic)
     } else if let Some(private_key) = private_key {
         // Remove 0x prefix if present
         let key = private_key.trim_start_matches("0x");
-        Keypair::create_from_private_key(key).map_err(|e| KeyFileError::Generic(e))
+        Keypair::create_from_private_key(key).map_err(KeyFileError::Generic)
     } else if let Some(ss58) = ss58_address {
         Keypair::new(Some(ss58.clone()), None, None, 42, None, 1)
             .map_err(|e| KeyFileError::Generic(e.to_string()))
@@ -171,7 +171,7 @@ pub fn ask_password(validation_required: bool) -> Result<String, KeyFileError> {
     if validation_required {
         while !valid {
             if let Some(ref pwd) = password {
-                valid = validate_password(&pwd)?;
+                valid = validate_password(pwd)?;
                 if !valid {
                     password = utils::prompt_password("Enter your password again: ".to_string());
                 }
@@ -565,10 +565,7 @@ impl Keyfile {
 
     /// Returns local environment variable key name based on Keyfile path.
     pub fn env_var_name(&self) -> Result<String, KeyFileError> {
-        let path = &self
-            .path
-            .replace(std::path::MAIN_SEPARATOR, "_")
-            .replace('.', "_");
+        let path = &self.path.replace([std::path::MAIN_SEPARATOR, '.'], "_");
         Ok(format!("BT_PW_{}", path.to_uppercase()))
     }
 
