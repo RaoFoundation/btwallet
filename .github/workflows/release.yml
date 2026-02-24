@@ -149,6 +149,15 @@ jobs:
             exit 1
           fi
 
+      - name: Check compilation
+        run: cargo check --all-targets
+
+      - name: Run tests
+        run: cargo test --lib --tests
+
+      - name: Verify package
+        run: cargo package
+
       - name: Publish to crates.io
         run: cargo publish
         env:
