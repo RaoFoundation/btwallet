@@ -52,7 +52,7 @@ jobs:
           args: >-
             --release
             --out dist
-            --interpreter python3.9 python3.10 python3.11 python3.12 python3.13 python3.14
+            --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
             ${{ matrix.platform.target == 'aarch64' && '--features vendored-openssl' || '' }}
           sccache: 'true'
           manylinux: auto
@@ -95,7 +95,7 @@ jobs:
         uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13 python3.14
+          args: --release --out dist --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
