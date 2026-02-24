@@ -16,7 +16,7 @@ include = ["src/**/*", "Cargo.toml", "LICENSE", "README.md"]
 [lib]
 name = "bittensor_wallet"
 path = "src/lib.rs"
-crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sp-core = "34.0.0"
@@ -48,6 +48,6 @@ features = ["vendored"]
 
 [features]
 default = []
-python-bindings = ["pyo3"]
+python-bindings = ["dep:pyo3"]
 extension-module = ["python-bindings", "pyo3/extension-module"]
 vendored-openssl = ["openssl-sys/vendored"]
