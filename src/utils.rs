@@ -81,9 +81,8 @@ pub fn are_bytes_valid_ed25519_pubkey(public_key: &[u8]) -> bool {
 ///     Returns:
 ///         valid (bool): ``True`` if the address is a valid destination address, ``False`` otherwise.
 pub fn is_valid_bittensor_address_or_public_key(address: &str) -> bool {
-    if address.starts_with("0x") {
-        // Convert hex string to bytes
-        if let Ok(bytes) = hex::decode(&address[2..]) {
+    if let Some(stripped) = address.strip_prefix("0x") {
+        if let Ok(bytes) = hex::decode(stripped) {
             are_bytes_valid_ed25519_pubkey(&bytes)
         } else {
             is_valid_ss58_address(address)
