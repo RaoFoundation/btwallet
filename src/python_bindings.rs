@@ -142,7 +142,7 @@ impl PyKeyfile {
     }
 
     #[getter(data)]
-    fn data_py(&self) -> PyResult<Option<Cow<[u8]>>> {
+    fn data_py(&self) -> PyResult<Option<Cow<'_, [u8]>>> {
         self.inner
             .data()
             .map(|vec| Some(Cow::Owned(vec)))
@@ -265,7 +265,7 @@ impl PyKeypair {
     }
 
     #[pyo3(signature = (data))]
-    fn sign(&self, data: Py<PyAny>, py: Python) -> PyResult<Cow<[u8]>> {
+    fn sign(&self, data: Py<PyAny>, py: Python) -> PyResult<Cow<'_, [u8]>> {
         // Convert data to bytes (data can be a string, hex, or bytes)
         let data_bound = data.bind(py);
         let data_bytes = if let Ok(s) = data_bound.extract::<String>() {
@@ -347,7 +347,7 @@ impl PyKeypair {
     }
 
     #[getter]
-    fn public_key(&self) -> PyResult<Option<Cow<[u8]>>> {
+    fn public_key(&self) -> PyResult<Option<Cow<'_, [u8]>>> {
         self.inner
             .public_key()
             .map(|opt| opt.map(Cow::from))
@@ -553,7 +553,7 @@ fn py_get_password_from_environment(env_var_name: String) -> PyResult<Option<Str
 
 #[pyfunction(name = "encrypt_keyfile_data")]
 #[pyo3(signature = (keyfile_data, password=None))]
-fn py_encrypt_keyfile_data(keyfile_data: &[u8], password: Option<String>) -> PyResult<Cow<[u8]>> {
+fn py_encrypt_keyfile_data(keyfile_data: &[u8], password: Option<String>) -> PyResult<Cow<'_, [u8]>> {
     keyfile::encrypt_keyfile_data(keyfile_data, password)
         .map(Cow::from)
         .map_err(PyErr::new::<PyKeyFileError, _>)
@@ -565,7 +565,7 @@ fn py_decrypt_keyfile_data(
     keyfile_data: &[u8],
     password: Option<String>,
     password_env_var: Option<String>,
-) -> PyResult<Cow<[u8]>> {
+) -> PyResult<Cow<'_, [u8]>> {
     keyfile::decrypt_keyfile_data(keyfile_data, password, password_env_var)
         .map(Cow::from)
         .map_err(PyErr::new::<PyKeyFileError, _>)
