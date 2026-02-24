@@ -54,7 +54,7 @@ jobs:
             --out dist
             --bindings pyo3
             --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
-            ${{ matrix.platform.target == 'aarch64' && '--features vendored-openssl' || '' }}
+            --features extension-module${{ matrix.platform.target == 'aarch64' && ',vendored-openssl' || '' }}
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
@@ -96,7 +96,7 @@ jobs:
         uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --bindings pyo3 --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
+          args: --release --out dist --bindings pyo3 --features extension-module --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
