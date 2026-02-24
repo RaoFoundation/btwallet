@@ -147,11 +147,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust stable
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.rust-branch }}
           components: rustfmt
-          profile: minimal
 
       - name: Install rust/cargo dependencies
         run: |

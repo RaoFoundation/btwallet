@@ -1,12 +1,15 @@
 name: Check Rust
 
+permissions:
+  contents: read
+
 concurrency:
   group: check-rust-${{ github.ref }}
   cancel-in-progress: true
 
 on:
   pull_request:
-    types: [labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
   ## Allow running workflow manually from the Actions tab
   workflow_dispatch:
@@ -18,13 +21,13 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  VERBOSE: ${{ github.events.input.verbose }}
+  VERBOSE: ${{ github.event.inputs.verbose }}
 
 jobs:
   # runs cargo fmt
   cargo-fmt:
     name: cargo fmt
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -48,7 +51,7 @@ jobs:
 
   cargo-clippy-default-features:
     name: cargo clippy
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -70,7 +73,7 @@ jobs:
 
   cargo-check-lints:
     name: check custom lints
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUSTFLAGS: -D warnings
@@ -97,7 +100,7 @@ jobs:
 
   cargo-clippy-all-features:
     name: cargo clippy --all-features
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -120,7 +123,7 @@ jobs:
   # runs cargo test --workspace --all-features
   cargo-test:
     name: cargo test
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -143,7 +146,7 @@ jobs:
   # ensures cargo fix has no trivial changes that can be applied
   cargo-fix:
     name: cargo fix
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     env:
       RUST_BACKTRACE: full
@@ -173,9 +176,54 @@ jobs:
               echo "No changes detected after running 'cargo fix --workspace' ✅"
           fi
 
+  cargo-check-no-python:
+    name: cargo check (no python)
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
+    env:
+      RUST_BACKTRACE: full
+    steps:
+      - name: Check-out repository under $GITHUB_WORKSPACE
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update &&
+          sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler
+
+      - name: Utilize Shared Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo check --no-default-features
+        run: cargo check --no-default-features
+
+      - name: cargo test --no-default-features --lib
+        run: cargo test --no-default-features --lib
+
+  cargo-package-check:
+    name: cargo package (dry-run)
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
+    env:
+      RUST_BACKTRACE: full
+    steps:
+      - name: Check-out repository under $GITHUB_WORKSPACE
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update &&
+          sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler pkg-config
+
+      - name: Utilize Shared Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo package (dry-run)
+        run: cargo package --no-verify
+
   check-feature-propagation:
     name: zepter run check
-    runs-on: SubtensorCI
+    runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-check-rust') }}
     steps:
       - name: Checkout

@@ -401,34 +401,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
-name = "bittensor_wallet"
-version = "4.0.1"
-dependencies = [
- "ansible-vault",
- "base64 0.22.1",
- "bip39",
- "clap",
- "colored",
- "dirs",
- "fernet",
- "hex",
- "openssl-sys",
- "passwords",
- "pbkdf2 0.12.2",
- "pyo3",
- "rpassword",
- "schnorrkel",
- "scrypt",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "shellexpand",
- "sodiumoxide",
- "sp-core",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "bitvec"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -503,6 +475,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
 dependencies = [
  "tinyvec",
+]
+
+[[package]]
+name = "btwallet"
+version = "4.0.1"
+dependencies = [
+ "ansible-vault",
+ "base64 0.22.1",
+ "bip39",
+ "clap",
+ "colored",
+ "dirs",
+ "fernet",
+ "hex",
+ "openssl-sys",
+ "passwords",
+ "pbkdf2 0.12.2",
+ "pyo3",
+ "rpassword",
+ "schnorrkel",
+ "scrypt",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "shellexpand",
+ "sodiumoxide",
+ "sp-core",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
