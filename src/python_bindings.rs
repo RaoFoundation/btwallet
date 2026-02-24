@@ -553,7 +553,10 @@ fn py_get_password_from_environment(env_var_name: String) -> PyResult<Option<Str
 
 #[pyfunction(name = "encrypt_keyfile_data")]
 #[pyo3(signature = (keyfile_data, password=None))]
-fn py_encrypt_keyfile_data(keyfile_data: &[u8], password: Option<String>) -> PyResult<Cow<'_, [u8]>> {
+fn py_encrypt_keyfile_data(
+    keyfile_data: &[u8],
+    password: Option<String>,
+) -> PyResult<Cow<'_, [u8]>> {
     keyfile::encrypt_keyfile_data(keyfile_data, password)
         .map(Cow::from)
         .map_err(PyErr::new::<PyKeyFileError, _>)
