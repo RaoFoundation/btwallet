@@ -7,11 +7,11 @@ description = "Bittensor wallet — Substrate-based key management, encryption, 
 repository = "https://github.com/opentensor/btwallet"
 homepage = "https://github.com/opentensor/btwallet"
 documentation = "https://docs.rs/btwallet"
-readme = "README.md"
+readme = "CRATE_README.md"
 keywords = ["bittensor", "wallet", "substrate", "crypto", "keypair"]
 categories = ["cryptography", "cryptography::cryptocurrencies"]
 rust-version = "1.74"
-include = ["src/**/*", "Cargo.toml", "LICENSE", "README.md"]
+include = ["src/**/*", "Cargo.toml", "LICENSE", "CRATE_README.md"]
 
 [lib]
 name = "bittensor_wallet"

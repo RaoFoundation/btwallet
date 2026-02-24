@@ -157,3 +157,7 @@ my_wallet.create()
 The above will create a wallet with "my_wallet_name". 
 
 ---
+
+## Rust crate
+
+This project is also published as a pure Rust crate [`btwallet`](https://crates.io/crates/btwallet) on crates.io for use without Python. See the [crate documentation](https://docs.rs/btwallet) for details.
