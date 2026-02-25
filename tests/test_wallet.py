@@ -171,3 +171,52 @@ def test_regenerate_hotkeypub(tmp_path):
     assert ss58_coldkey == ss58_coldkeypub
     assert ss58_hotkey == ss58_hotkeypub
     assert ss58_hotkeypub == new_ss58_hotkeypub
+
+
+def test_regenerate_hotkeypub_invalid_ss58(mock_wallet):
+    """Verify that regenerate_hotkeypub raises ValueError for invalid ss58_address."""
+    with pytest.raises(ValueError):
+        mock_wallet.regenerate_hotkeypub(
+            ss58_address="invalid_address", overwrite=True
+        )
+
+
+def test_regenerate_hotkeypub_no_args(mock_wallet):
+    """Verify that regenerate_hotkeypub raises ValueError when neither ss58 nor public_key is given."""
+    with pytest.raises(ValueError):
+        mock_wallet.regenerate_hotkeypub()
+
+
+def test_regenerate_coldkeypub_invalid_ss58(mock_wallet):
+    """Verify that regenerate_coldkeypub raises ValueError for invalid ss58_address."""
+    with pytest.raises(ValueError):
+        mock_wallet.regenerate_coldkeypub(
+            ss58_address="invalid_address", overwrite=True
+        )
+
+
+def test_regenerate_coldkeypub_no_args(mock_wallet):
+    """Verify that regenerate_coldkeypub raises ValueError when neither ss58 nor public_key is given."""
+    with pytest.raises(ValueError):
+        mock_wallet.regenerate_coldkeypub()
+
+
+def test_regenerate_hotkeypub_with_public_key(tmp_path):
+    """Verify that regenerate_hotkeypub works with public_key parameter."""
+    wallet_path = (tmp_path / "test_wallets").resolve().as_posix()
+    w = Wallet(name="test_wallet", hotkey="test_hotkey", path=wallet_path)
+    w.create(coldkey_use_password=False)
+
+    public_key = w.hotkey.public_key
+    w.regenerate_hotkeypub(public_key=public_key, overwrite=True)
+
+    assert w.hotkeypub.public_key == public_key
+
+
+def test_hotkeypub_file_not_found(tmp_path):
+    """Verify that accessing hotkeypub raises KeyFileError when file does not exist."""
+    wallet_path = (tmp_path / "test_wallets").resolve().as_posix()
+    w = Wallet(name="test_wallet", hotkey="test_hotkey", path=wallet_path)
+
+    with pytest.raises(KeyFileError):
+        _ = w.hotkeypub

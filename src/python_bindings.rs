@@ -1416,7 +1416,12 @@ except argparse.ArgumentError:
         let new_inner_wallet = self
             .inner
             .regenerate_coldkeypub(ss58_address, public_key, overwrite.unwrap_or(false))
-            .map_err(PyErr::new::<PyKeyFileError, _>)?;
+            .map_err(|e| match e {
+                WalletError::InvalidInput(_) | WalletError::KeyGeneration(_) => {
+                    PyErr::new::<PyValueError, _>(e.to_string())
+                }
+                _ => PyErr::new::<PyKeyFileError, _>(e.to_string()),
+            })?;
         self.inner = new_inner_wallet;
         Ok(Wallet {
             inner: self.inner.clone(),
@@ -1476,7 +1481,12 @@ except argparse.ArgumentError:
         let new_inner_wallet = self
             .inner
             .regenerate_hotkeypub(ss58_address, public_key, overwrite.unwrap_or(false))
-            .map_err(PyErr::new::<PyKeyFileError, _>)?;
+            .map_err(|e| match e {
+                WalletError::InvalidInput(_) | WalletError::KeyGeneration(_) => {
+                    PyErr::new::<PyValueError, _>(e.to_string())
+                }
+                _ => PyErr::new::<PyKeyFileError, _>(e.to_string()),
+            })?;
         self.inner = new_inner_wallet;
         Ok(Wallet {
             inner: self.inner.clone(),
