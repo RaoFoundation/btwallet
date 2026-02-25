@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/bittensor-wallet.svg)](https://badge.fury.io/py/bittensor-wallet)
 
+[![Crates.io](https://img.shields.io/crates/v/btwallet.svg)](https://crates.io/crates/btwallet)
+[![Documentation](https://docs.rs/btwallet/badge.svg)](https://docs.rs/btwallet)
 ---
 
 ## Internet-scale Neural Networks <!-- omit in toc -->
