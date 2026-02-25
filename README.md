@@ -100,7 +100,7 @@ wallet.create()
 If a wallet with the name "default" already exists, then you will see a message. If it doesn't exist, then the above code will create both a coldkey and a hotkey and displays the following information, including your mnemonic **(mnemonics are replaced with `x` in the below example for security)**:
 
 ```bash
-IMPORTANT: Store this mnemonic in a secure (preferable offline place), as anyone who has possession of this mnemonic can use it to regenerate the key and access your tokens.
+IMPORTANT: Store this mnemonic in a secure (preferably offline place), as anyone who has possession of this mnemonic can use it to regenerate the key and access your tokens.
 
 The mnemonic to the new coldkey is:
 
@@ -112,7 +112,7 @@ btcli w regen-coldkey --mnemonic "forward xxxx xxx xxx xxxx xxxx xxxx xxx xx xx 
 Specify password for key encryption:
 Retype your password:
 
-IMPORTANT: Store this mnemonic in a secure (preferable offline place), as anyone who has possession of this mnemonic can use it to regenerate the key and access your tokens.
+IMPORTANT: Store this mnemonic in a secure (preferably offline place), as anyone who has possession of this mnemonic can use it to regenerate the key and access your tokens.
 
 The mnemonic to the new hotkey is:
 
@@ -152,7 +152,7 @@ my_hotkey = "name_of_my_hotkey"
 my_wallet = Wallet(name=my_name, path=my_path, hotkey=my_hotkey)
 my_wallet.create()
 
->>> IMPORTANT: Store this mnemonic in a secure (preferable offline place), as anyone who has possession of this mnemonic can use it to regenerate the key and access your tokens.
+>>> IMPORTANT: Store this mnemonic in a secure (preferably offline place), as anyone who has possession of this mnemonic can use it to regenerate the key and access your tokens.
 ```
 The above will create a wallet with "my_wallet_name". 
 
