@@ -72,3 +72,66 @@ impl Config {
         self.wallet.hotkey.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wallet_config_defaults() {
+        let config = WalletConfig::new(None, None, None);
+        assert_eq!(config.name, BT_WALLET_NAME);
+        assert_eq!(config.hotkey, BT_WALLET_HOTKEY);
+        assert_eq!(config.path, BT_WALLET_PATH);
+    }
+
+    #[test]
+    fn test_wallet_config_custom_values() {
+        let config = WalletConfig::new(
+            Some("my_wallet".to_string()),
+            Some("my_hotkey".to_string()),
+            Some("/custom/path/".to_string()),
+        );
+        assert_eq!(config.name, "my_wallet");
+        assert_eq!(config.hotkey, "my_hotkey");
+        assert_eq!(config.path, "/custom/path/");
+    }
+
+    #[test]
+    fn test_wallet_config_partial_overrides() {
+        let config = WalletConfig::new(Some("custom_name".to_string()), None, None);
+        assert_eq!(config.name, "custom_name");
+        assert_eq!(config.hotkey, BT_WALLET_HOTKEY);
+        assert_eq!(config.path, BT_WALLET_PATH);
+    }
+
+    #[test]
+    fn test_config_delegates_to_wallet_config() {
+        let config = Config::new(
+            Some("test_wallet".to_string()),
+            Some("test_hotkey".to_string()),
+            Some("/test/path/".to_string()),
+        );
+        assert_eq!(config.name(), "test_wallet");
+        assert_eq!(config.hotkey(), "test_hotkey");
+        assert_eq!(config.path(), "/test/path/");
+    }
+
+    #[test]
+    fn test_config_display_format() {
+        let config = Config::new(None, None, None);
+        let display = format!("{}", config);
+        assert!(display.contains(BT_WALLET_NAME));
+        assert!(display.contains(BT_WALLET_PATH));
+        assert!(display.contains(BT_WALLET_HOTKEY));
+    }
+
+    #[test]
+    fn test_config_clone() {
+        let config = Config::new(Some("cloned".to_string()), Some("hotkey".to_string()), None);
+        let cloned = config.clone();
+        assert_eq!(config.name(), cloned.name());
+        assert_eq!(config.hotkey(), cloned.hotkey());
+        assert_eq!(config.path(), cloned.path());
+    }
+}

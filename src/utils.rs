@@ -168,4 +168,65 @@ mod tests {
         let test_address = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
         assert!(is_valid_ss58_address(test_address));
     }
+
+    #[test]
+    fn test_get_ss58_format_returns_format() {
+        let test_address = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+        let format = get_ss58_format(test_address).expect("Failed to get ss58 format");
+        assert_eq!(format, 42);
+    }
+
+    #[test]
+    fn test_get_ss58_format_invalid_address() {
+        let result = get_ss58_format("invalid_address");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_is_valid_ss58_address_empty() {
+        assert!(!is_valid_ss58_address(""));
+    }
+
+    #[test]
+    fn test_is_valid_ss58_address_invalid() {
+        assert!(!is_valid_ss58_address("not_a_real_address"));
+    }
+
+    #[test]
+    fn test_is_valid_bittensor_address_or_public_key_ss58() {
+        let address = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+        assert!(is_valid_bittensor_address_or_public_key(address));
+    }
+
+    #[test]
+    fn test_is_valid_bittensor_address_or_public_key_invalid() {
+        assert!(!is_valid_bittensor_address_or_public_key("garbage"));
+    }
+
+    #[test]
+    fn test_is_valid_bittensor_address_hex_prefix() {
+        let keypair = Keypair::create_from_uri("//Alice").expect("Failed to create keypair");
+        let pub_key = keypair.public_key().unwrap().unwrap();
+        let hex_key = format!("0x{}", hex::encode(&pub_key));
+        assert!(is_valid_bittensor_address_or_public_key(&hex_key));
+    }
+
+    #[test]
+    fn test_is_string_valid_ed25519_pubkey_wrong_length() {
+        assert!(!is_string_valid_ed25519_pubkey("tooshort"));
+        assert!(!is_string_valid_ed25519_pubkey(""));
+    }
+
+    #[test]
+    fn test_are_bytes_valid_ed25519_pubkey_wrong_length() {
+        assert!(!are_bytes_valid_ed25519_pubkey(&[0u8; 16]));
+        assert!(!are_bytes_valid_ed25519_pubkey(&[]));
+    }
+
+    #[test]
+    fn test_are_bytes_valid_ed25519_pubkey_valid() {
+        let keypair = Keypair::create_from_uri("//Alice").expect("Failed to create keypair");
+        let pub_key = keypair.public_key().unwrap().unwrap();
+        assert!(are_bytes_valid_ed25519_pubkey(&pub_key));
+    }
 }

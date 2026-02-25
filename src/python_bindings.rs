@@ -925,21 +925,22 @@ except argparse.ArgumentError:
 
     /// Checks for existing coldkeypub and hotkeys, and creates them if non-existent.
     ///
-    ///     Arguments:
-    ///         coldkey_use_password (bool): Whether to use a password for coldkey. Defaults to ``True``.
-    ///         hotkey_use_password (bool): Whether to use a password for hotkey. Defaults to ``False``.
-    ///         save_coldkey_to_env (bool): Whether to save a coldkey password to local env. Defaults to ``False``.
-    ///         save_hotkey_to_env (bool): Whether to save a hotkey password to local env. Defaults to ``False``.
-    ///         coldkey_password (Optional[str]): Coldkey password for encryption. Defaults to ``None``. If `coldkey_password` is passed, then `coldkey_use_password` is automatically ``True``.
-    ///         hotkey_password (Optional[str]): Hotkey password for encryption. Defaults to ``None``. If `hotkey_password` is passed, then `hotkey_use_password` is automatically ``True``.
-    ///         overwrite (bool): Whether to overwrite an existing keys. Defaults to ``False``.
-    ///         suppress (bool): If ``True``, suppresses the display of the keys mnemonic message. Defaults to ``False``.
+    /// # Arguments
     ///
-    ///     Returns:
-    ///         Wallet instance with created keys.
+    /// * `coldkey_use_password` - Whether to use a password for coldkey. Defaults to `true`.
+    /// * `hotkey_use_password` - Whether to use a password for hotkey. Defaults to `false`.
+    /// * `save_coldkey_to_env` - Whether to save a coldkey password to local env. Defaults to `false`.
+    /// * `save_hotkey_to_env` - Whether to save a hotkey password to local env. Defaults to `false`.
+    /// * `coldkey_password` - Coldkey password for encryption. Defaults to `None`.
+    ///   If provided, `coldkey_use_password` is automatically `true`.
+    /// * `hotkey_password` - Hotkey password for encryption. Defaults to `None`.
+    ///   If provided, `hotkey_use_password` is automatically `true`.
+    /// * `overwrite` - Whether to overwrite existing keys. Defaults to `false`.
+    /// * `suppress` - If `true`, suppresses the display of the keys mnemonic message. Defaults to `false`.
     ///
-    ///     Raises:
-    ///         WalletError: If key generation or file operations fail.
+    /// # Returns
+    ///
+    /// Wallet instance with created keys, or error.
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (coldkey_use_password=true, hotkey_use_password=false, save_coldkey_to_env=false, save_hotkey_to_env=false, coldkey_password=None, hotkey_password=None, overwrite=false, suppress=false))]
     pub fn create(

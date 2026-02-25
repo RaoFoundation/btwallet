@@ -524,3 +524,143 @@ impl fmt::Debug for Keypair {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_keypair_from_mnemonic() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let keypair = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        assert!(keypair.ss58_address().is_some());
+        assert!(keypair.public_key().unwrap().is_some());
+        assert!(keypair.mnemonic().is_some());
+    }
+
+    #[test]
+    fn test_keypair_generate_mnemonic_word_count() {
+        for n_words in [12, 15, 18, 21, 24] {
+            let mnemonic =
+                Keypair::generate_mnemonic(n_words).expect("Failed to generate mnemonic");
+            let word_count = mnemonic.split_whitespace().count();
+            assert_eq!(
+                word_count, n_words,
+                "Expected {} words, got {}",
+                n_words, word_count
+            );
+        }
+    }
+
+    #[test]
+    fn test_keypair_from_uri() {
+        let keypair = Keypair::create_from_uri("//Alice").expect("Failed to create from URI");
+        assert!(keypair.ss58_address().is_some());
+        assert!(keypair.public_key().unwrap().is_some());
+    }
+
+    #[test]
+    fn test_keypair_sign_and_verify() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let keypair = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let data = b"test message".to_vec();
+        let signature = keypair.sign(data.clone()).expect("Failed to sign");
+        assert!(!signature.is_empty());
+        let verified = keypair.verify(data, signature).expect("Failed to verify");
+        assert!(verified);
+    }
+
+    #[test]
+    fn test_keypair_verify_wrong_data() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let keypair = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let data = b"original message".to_vec();
+        let wrong_data = b"tampered message".to_vec();
+        let signature = keypair.sign(data).expect("Failed to sign");
+        let verified = keypair
+            .verify(wrong_data, signature)
+            .expect("Failed to verify");
+        assert!(!verified);
+    }
+
+    #[test]
+    fn test_keypair_from_ss58_address() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let original = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let ss58 = original.ss58_address().expect("Failed to get ss58");
+        let restored =
+            Keypair::new(Some(ss58.clone()), None, None, 42, None, 1).expect("Failed to restore");
+        assert_eq!(restored.ss58_address().unwrap(), ss58);
+    }
+
+    #[test]
+    fn test_keypair_from_public_key_hex() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let original = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let pub_key_bytes = original.public_key().unwrap().unwrap();
+        let pub_key_hex = hex::encode(&pub_key_bytes);
+        let restored = Keypair::new(None, Some(pub_key_hex), None, 42, None, 1)
+            .expect("Failed to restore from pubkey");
+        assert!(restored.ss58_address().is_some());
+    }
+
+    #[test]
+    fn test_keypair_unsupported_crypto_type() {
+        let result = Keypair::new(None, Some("a".repeat(64)), None, 42, None, 0);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Unsupported crypto type"));
+    }
+
+    #[test]
+    fn test_keypair_no_address_or_key() {
+        let result = Keypair::new(None, None, None, 42, None, 1);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_keypair_default() {
+        let kp = Keypair::default();
+        assert!(kp.ss58_address().is_none());
+        assert_eq!(kp.ss58_format(), 42);
+        assert_eq!(kp.crypto_type(), 1);
+        assert!(kp.mnemonic().is_none());
+    }
+
+    #[test]
+    fn test_keypair_display() {
+        let kp = Keypair::create_from_uri("//Bob").expect("Failed to create keypair");
+        let display = format!("{}", kp);
+        assert!(display.starts_with("<Keypair (address="));
+        assert!(display.ends_with(")>"));
+    }
+
+    #[test]
+    fn test_keypair_debug() {
+        let kp = Keypair::default();
+        let debug = format!("{:?}", kp);
+        assert!(debug.contains("Keypair"));
+    }
+
+    #[test]
+    fn test_keypair_clone_preserves_address() {
+        let kp = Keypair::create_from_uri("//Charlie").expect("Failed to create keypair");
+        let cloned = kp.clone();
+        assert_eq!(kp.ss58_address(), cloned.ss58_address());
+    }
+
+    #[test]
+    fn test_keypair_seed_hex() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let kp = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        assert!(kp.seed_hex().is_some());
+    }
+
+    #[test]
+    fn test_keypair_from_seed() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let kp = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let seed = kp.seed_hex().expect("No seed");
+        let restored = Keypair::create_from_seed(seed).expect("Failed to create from seed");
+        assert_eq!(kp.ss58_address(), restored.ss58_address());
+    }
+}

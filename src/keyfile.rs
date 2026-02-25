@@ -1038,3 +1038,151 @@ impl Keyfile {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::keypair::Keypair;
+
+    #[test]
+    fn test_serialize_keypair_with_mnemonic() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let keypair = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let data =
+            serialized_keypair_to_keyfile_data(&keypair).expect("Failed to serialize keypair");
+        assert!(!data.is_empty());
+        let json_str = std::str::from_utf8(&data).expect("Invalid UTF-8");
+        assert!(json_str.contains("ss58Address"));
+        assert!(json_str.contains("publicKey"));
+        assert!(json_str.contains("secretPhrase"));
+    }
+
+    #[test]
+    fn test_serialize_deserialize_roundtrip() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let original = Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let data =
+            serialized_keypair_to_keyfile_data(&original).expect("Failed to serialize keypair");
+        let restored =
+            deserialize_keypair_from_keyfile_data(&data).expect("Failed to deserialize keypair");
+        assert_eq!(original.ss58_address(), restored.ss58_address());
+    }
+
+    #[test]
+    fn test_serialize_pubkey_only_keypair() {
+        let mnemonic = Keypair::generate_mnemonic(12).expect("Failed to generate mnemonic");
+        let full_keypair =
+            Keypair::create_from_mnemonic(&mnemonic).expect("Failed to create keypair");
+        let ss58 = full_keypair.ss58_address().expect("No ss58 address");
+        let pubkey_only =
+            Keypair::new(Some(ss58), None, None, 42, None, 1).expect("Failed to create pubkey kp");
+        let data = serialized_keypair_to_keyfile_data(&pubkey_only)
+            .expect("Failed to serialize pubkey keypair");
+        let json_str = std::str::from_utf8(&data).expect("Invalid UTF-8");
+        assert!(json_str.contains("ss58Address"));
+        assert!(!json_str.contains("secretPhrase"));
+    }
+
+    #[test]
+    fn test_deserialize_invalid_json() {
+        let invalid_data = b"not valid json";
+        let result = deserialize_keypair_from_keyfile_data(invalid_data);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_empty_json() {
+        let empty_json = b"{}";
+        let result = deserialize_keypair_from_keyfile_data(empty_json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_keyfile_data_is_encrypted_nacl() {
+        assert!(keyfile_data_is_encrypted_nacl(b"$NACLsomedata"));
+        assert!(!keyfile_data_is_encrypted_nacl(b"plaintext"));
+    }
+
+    #[test]
+    fn test_keyfile_data_is_encrypted_ansible() {
+        assert!(keyfile_data_is_encrypted_ansible(b"$ANSIBLE_VAULTdata"));
+        assert!(!keyfile_data_is_encrypted_ansible(b"plaintext"));
+    }
+
+    #[test]
+    fn test_keyfile_data_is_encrypted_legacy() {
+        assert!(keyfile_data_is_encrypted_legacy(b"gAAAAAsomedata"));
+        assert!(!keyfile_data_is_encrypted_legacy(b"plaintext"));
+    }
+
+    #[test]
+    fn test_keyfile_data_is_encrypted_combined() {
+        assert!(keyfile_data_is_encrypted(b"$NACLdata"));
+        assert!(keyfile_data_is_encrypted(b"$ANSIBLE_VAULTdata"));
+        assert!(keyfile_data_is_encrypted(b"gAAAAAsomedata"));
+        assert!(!keyfile_data_is_encrypted(b"plaintext data"));
+    }
+
+    #[test]
+    fn test_keyfile_data_encryption_method() {
+        assert_eq!(keyfile_data_encryption_method(b"$NACLdata"), "NaCl");
+        assert_eq!(
+            keyfile_data_encryption_method(b"$ANSIBLE_VAULTdata"),
+            "Ansible Vault"
+        );
+        assert_eq!(keyfile_data_encryption_method(b"gAAAAAsomedata"), "legacy");
+        assert_eq!(keyfile_data_encryption_method(b"plaintext"), "unknown");
+    }
+
+    #[test]
+    fn test_keyfile_new() {
+        let keyfile = Keyfile::new(
+            "/tmp/test/keyfile".to_string(),
+            Some("test".to_string()),
+            false,
+        )
+        .expect("Failed to create keyfile");
+        assert_eq!(keyfile.path, "/tmp/test/keyfile");
+    }
+
+    #[test]
+    fn test_keyfile_default_name() {
+        let keyfile = Keyfile::new("/tmp/test/keyfile".to_string(), None, false)
+            .expect("Failed to create keyfile");
+        let name = keyfile.get_name().expect("Failed to get name");
+        assert_eq!(name, "Keyfile");
+    }
+
+    #[test]
+    fn test_keyfile_get_path() {
+        let path = "/tmp/test/my_keyfile".to_string();
+        let keyfile = Keyfile::new(path.clone(), None, false).expect("Failed to create keyfile");
+        assert_eq!(keyfile.get_path().expect("Failed to get path"), path);
+    }
+
+    #[test]
+    fn test_keyfile_env_var_name() {
+        let keyfile = Keyfile::new("/tmp/test/keyfile".to_string(), None, false)
+            .expect("Failed to create keyfile");
+        let env_name = keyfile.env_var_name().expect("Failed to get env var name");
+        assert!(env_name.starts_with("BT_PW_"));
+        assert!(env_name.contains("TMP"));
+    }
+
+    #[test]
+    fn test_keyfile_nonexistent_file() {
+        let keyfile = Keyfile::new("/nonexistent/path/keyfile".to_string(), None, false)
+            .expect("Failed to create keyfile");
+        assert!(!keyfile
+            .exists_on_device()
+            .expect("Failed to check existence"));
+    }
+
+    #[test]
+    fn test_keyfile_display() {
+        let keyfile = Keyfile::new("/tmp/test_display".to_string(), None, false)
+            .expect("Failed to create keyfile");
+        let display = format!("{}", keyfile);
+        assert!(display.contains("/tmp/test_display"));
+    }
+}

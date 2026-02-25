@@ -1071,18 +1071,8 @@ impl Wallet {
         Ok(self.clone())
     }
 
-    /// Regenerates the hotkeypub from the passed ss58_address or public_key and saves the file.
-    /// Requires either ss58_address or public_key to be passed.
-    ///
-    ///     Arguments:
-    ///         ss58_address (Optional[str]): SS58 address to regenerate the hotkeypub from. Defaults to ``None``.
-    ///         public_key (Optional[str]): Public key hex to regenerate the hotkeypub from. Defaults to ``None``.
-    ///         overwrite (bool): Whether to overwrite existing keys. Defaults to ``False``.
-    ///
-    ///     Returns:
-    ///         `Wallet` - The wallet instance with regenerated hotkeypub.
-    ///     Raises:
-    ///         WalletError: If key generation or file operations fail.
+    /// Regenerates the hotkeypub from the passed `ss58_address` or `public_key` and saves the file.
+    /// Requires either `ss58_address` or `public_key` to be passed.
     pub fn regenerate_hotkeypub(
         &mut self,
         ss58_address: Option<String>,
@@ -1116,5 +1106,180 @@ impl Wallet {
 
         self.set_hotkeypub(keypair, false, overwrite)?;
         Ok(self.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn default_wallet() -> Wallet {
+        Wallet::new(None, None, None, None)
+    }
+
+    fn custom_wallet(name: &str, hotkey: &str, path: &str) -> Wallet {
+        Wallet::new(
+            Some(name.to_string()),
+            Some(hotkey.to_string()),
+            Some(path.to_string()),
+            None,
+        )
+    }
+
+    #[test]
+    fn test_wallet_default_values() {
+        let wallet = default_wallet();
+        assert_eq!(wallet.name, BT_WALLET_NAME);
+        assert_eq!(wallet.hotkey, BT_WALLET_HOTKEY);
+        assert_eq!(wallet.path, BT_WALLET_PATH);
+    }
+
+    #[test]
+    fn test_wallet_custom_values() {
+        let wallet = custom_wallet("my_wallet", "my_hotkey", "/tmp/wallets/");
+        assert_eq!(wallet.name, "my_wallet");
+        assert_eq!(wallet.hotkey, "my_hotkey");
+        assert_eq!(wallet.path, "/tmp/wallets/");
+    }
+
+    #[test]
+    fn test_wallet_with_config() {
+        let config = Config::new(
+            Some("config_name".to_string()),
+            Some("config_hotkey".to_string()),
+            Some("/config/path/".to_string()),
+        );
+        let wallet = Wallet::new(None, None, None, Some(config));
+        assert_eq!(wallet.name, "config_name");
+        assert_eq!(wallet.hotkey, "config_hotkey");
+        assert_eq!(wallet.path, "/config/path/");
+    }
+
+    #[test]
+    fn test_wallet_explicit_overrides_config() {
+        let config = Config::new(
+            Some("config_name".to_string()),
+            Some("config_hotkey".to_string()),
+            None,
+        );
+        let wallet = Wallet::new(Some("explicit_name".to_string()), None, None, Some(config));
+        assert_eq!(wallet.name, "explicit_name");
+    }
+
+    #[test]
+    fn test_wallet_display() {
+        let wallet = custom_wallet("test", "hk", "/p/");
+        let display = format!("{}", wallet);
+        assert!(display.contains("test"));
+        assert!(display.contains("hk"));
+        assert!(display.contains("/p/"));
+    }
+
+    #[test]
+    fn test_wallet_debug() {
+        let wallet = default_wallet();
+        let debug = format!("{:?}", wallet);
+        assert!(debug.contains(BT_WALLET_NAME));
+    }
+
+    #[test]
+    fn test_wallet_get_name() {
+        let wallet = custom_wallet("named", "hk", "/p/");
+        assert_eq!(wallet.get_name(), "named");
+    }
+
+    #[test]
+    fn test_wallet_get_path() {
+        let wallet = custom_wallet("w", "hk", "/custom/path/");
+        assert_eq!(wallet.get_path(), "/custom/path/");
+    }
+
+    #[test]
+    fn test_wallet_get_hotkey_str() {
+        let wallet = custom_wallet("w", "special_hotkey", "/p/");
+        assert_eq!(wallet.get_hotkey_str(), "special_hotkey");
+    }
+
+    #[test]
+    fn test_wallet_clone() {
+        let wallet = custom_wallet("original", "hk", "/path/");
+        let cloned = wallet.clone();
+        assert_eq!(wallet.name, cloned.name);
+        assert_eq!(wallet.hotkey, cloned.hotkey);
+        assert_eq!(wallet.path, cloned.path);
+    }
+
+    #[test]
+    fn test_coldkey_file_path() {
+        let wallet = custom_wallet("test_wallet", "hk", "/tmp/test_wallets/");
+        let keyfile = wallet.coldkey_file().expect("Failed to get coldkey file");
+        assert!(keyfile.path.contains("test_wallet"));
+        assert!(keyfile.path.contains("coldkey"));
+    }
+
+    #[test]
+    fn test_hotkey_file_path() {
+        let wallet = custom_wallet("test_wallet", "my_hotkey", "/tmp/test_wallets/");
+        let keyfile = wallet.hotkey_file().expect("Failed to get hotkey file");
+        assert!(keyfile.path.contains("test_wallet"));
+        assert!(keyfile.path.contains("hotkeys"));
+        assert!(keyfile.path.contains("my_hotkey"));
+    }
+
+    #[test]
+    fn test_coldkeypub_file_path() {
+        let wallet = custom_wallet("test_wallet", "hk", "/tmp/test_wallets/");
+        let keyfile = wallet
+            .coldkeypub_file()
+            .expect("Failed to get coldkeypub file");
+        assert!(keyfile.path.contains("test_wallet"));
+        assert!(keyfile.path.contains("coldkeypub.txt"));
+    }
+
+    #[test]
+    fn test_hotkeypub_file_path() {
+        let wallet = custom_wallet("test_wallet", "my_hotkey", "/tmp/test_wallets/");
+        let keyfile = wallet
+            .hotkeypub_file()
+            .expect("Failed to get hotkeypub file");
+        assert!(keyfile.path.contains("test_wallet"));
+        assert!(keyfile.path.contains("hotkeys"));
+        assert!(keyfile.path.contains("my_hotkeypub.txt"));
+    }
+
+    #[test]
+    fn test_wallet_config_default() {
+        let config = Wallet::config();
+        assert_eq!(config.name(), BT_WALLET_NAME);
+        assert_eq!(config.hotkey(), BT_WALLET_HOTKEY);
+        assert_eq!(config.path(), BT_WALLET_PATH);
+    }
+
+    #[test]
+    fn test_regenerate_coldkeypub_requires_address() {
+        let mut wallet = default_wallet();
+        let result = wallet.regenerate_coldkeypub(None, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_regenerate_hotkeypub_requires_address() {
+        let mut wallet = default_wallet();
+        let result = wallet.regenerate_hotkeypub(None, None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_regenerate_coldkeypub_invalid_address() {
+        let mut wallet = default_wallet();
+        let result = wallet.regenerate_coldkeypub(Some("invalid_address".to_string()), None, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_regenerate_hotkeypub_invalid_address() {
+        let mut wallet = default_wallet();
+        let result = wallet.regenerate_hotkeypub(Some("invalid_address".to_string()), None, false);
+        assert!(result.is_err());
     }
 }
