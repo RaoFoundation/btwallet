@@ -522,7 +522,9 @@ impl Keypair {
             }
             None => {
                 if let Some(private_key) = &self.private_key {
-                    Ok(Some(private_key.as_bytes().to_vec()))
+                    let private_key_vec = hex::decode(private_key.trim_start_matches("0x"))
+                        .map_err(|_| "private_key field is not valid hex".to_string())?;
+                    Ok(Some(private_key_vec))
                 } else {
                     Ok(None)
                 }
