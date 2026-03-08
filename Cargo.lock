@@ -503,6 +503,7 @@ dependencies = [
  "sodiumoxide",
  "sp-core",
  "thiserror 2.0.12",
+ "zeroize",
 ]
 
 [[package]]

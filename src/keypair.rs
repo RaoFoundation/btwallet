@@ -8,6 +8,7 @@ use sodiumoxide::crypto::secretbox::{Key, Nonce};
 use sp_core::crypto::Ss58Codec;
 use sp_core::{sr25519, ByteArray, Pair};
 use std::fmt;
+use zeroize::Zeroize;
 
 const PKCS8_HEADER: &[u8] = &[48, 83, 2, 1, 1, 48, 5, 6, 3, 43, 101, 112, 4, 34, 4, 32];
 const PKCS8_DIVIDER: &[u8] = &[161, 35, 3, 33, 0];
@@ -162,10 +163,14 @@ impl Keypair {
             sr25519::Pair::from_phrase(mnemonic, None).map_err(|e| e.to_string())?;
 
         let kp = Keypair {
-            mnemonic: Some(mnemonic.to_string()),
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
             seed_hex: Some(seed_vec.to_vec()),
+            crypto_type: 1,
+            mnemonic: Some(mnemonic.to_string()),
             pair: Some(pair),
-            ..Default::default()
         };
         Ok(kp)
     }
@@ -181,9 +186,14 @@ impl Keypair {
             .map_err(|e| format!("Failed to create pair from seed: {}", e))?;
 
         let kp = Keypair {
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
             seed_hex: Some(seed.to_vec()),
+            crypto_type: 1,
+            mnemonic: None,
             pair: Some(pair),
-            ..Default::default()
         };
         Ok(kp)
     }
@@ -202,8 +212,14 @@ impl Keypair {
             .map_err(|e| format!("Failed to create pair from private key: {}", e))?;
 
         let kp = Keypair {
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
+            seed_hex: None,
+            crypto_type: 1,
+            mnemonic: None,
             pair: Some(pair),
-            ..Default::default()
         };
         Ok(kp)
     }
@@ -329,8 +345,14 @@ impl Keypair {
         let pair = Pair::from_string(uri, None).map_err(|e| e.to_string())?;
 
         let kp = Keypair {
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
+            seed_hex: None,
+            crypto_type: 1,
+            mnemonic: None,
             pair: Some(pair),
-            ..Default::default()
         };
         Ok(kp)
     }
@@ -449,7 +471,13 @@ impl Keypair {
         self.ss58_format
     }
 
+    #[cfg(feature = "secret-access")]
     pub fn seed_hex(&self) -> Option<Vec<u8>> {
+        self.seed_hex.clone()
+    }
+
+    #[cfg(not(feature = "secret-access"))]
+    pub(crate) fn seed_hex(&self) -> Option<Vec<u8>> {
         self.seed_hex.clone()
     }
 
@@ -466,13 +494,27 @@ impl Keypair {
         self.crypto_type = crypto_type;
     }
 
-    /// Returns the mnemonic phrase of the keypair.
+    #[cfg(feature = "secret-access")]
     pub fn mnemonic(&self) -> Option<String> {
         self.mnemonic.clone()
     }
 
-    /// Returns the private key of the keypair as bytes.
+    #[cfg(not(feature = "secret-access"))]
+    pub(crate) fn mnemonic(&self) -> Option<String> {
+        self.mnemonic.clone()
+    }
+
+    #[cfg(feature = "secret-access")]
     pub fn private_key(&self) -> Result<Option<Vec<u8>>, String> {
+        self.private_key_inner()
+    }
+
+    #[cfg(not(feature = "secret-access"))]
+    pub(crate) fn private_key(&self) -> Result<Option<Vec<u8>>, String> {
+        self.private_key_inner()
+    }
+
+    fn private_key_inner(&self) -> Result<Option<Vec<u8>>, String> {
         match &self.pair {
             Some(pair) => {
                 let seed = pair.to_raw_vec();
@@ -502,6 +544,21 @@ impl Default for Keypair {
             mnemonic: None,
             pair: None,
         }
+    }
+}
+
+impl Drop for Keypair {
+    fn drop(&mut self) {
+        if let Some(ref mut k) = self.private_key {
+            k.zeroize();
+        }
+        if let Some(ref mut s) = self.seed_hex {
+            s.zeroize();
+        }
+        if let Some(ref mut m) = self.mnemonic {
+            m.zeroize();
+        }
+        self.pair = None;
     }
 }
 
