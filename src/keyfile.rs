@@ -305,8 +305,9 @@ pub fn decrypt_keyfile_data(
         let mut key = vec![0; 32];
         kdf(password.as_bytes(), LEGACY_SALT, 10000000, &mut key);
 
-        let fernet_key = Fernet::generate_key();
-        let fernet = Fernet::new(&fernet_key).unwrap();
+        let fernet_key = general_purpose::URL_SAFE.encode(&key);
+        let fernet = Fernet::new(&fernet_key)
+            .ok_or_else(|| KeyFileError::Generic("Invalid fernet key".into()))?;
         let keyfile_data_str = from_utf8(keyfile_data)
             .map_err(|e| KeyFileError::DeserializationError(e.to_string()))?;
         fernet.decrypt(keyfile_data_str).map_err(|_| {
