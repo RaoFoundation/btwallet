@@ -305,8 +305,15 @@ pub fn decrypt_keyfile_data(
         let mut key = vec![0; 32];
         kdf(password.as_bytes(), LEGACY_SALT, 10000000, &mut key);
 
-        let fernet_key = Fernet::generate_key();
-        let fernet = Fernet::new(&fernet_key).unwrap();
+        // Fernet expects a url-safe base64 encoding of the 32-byte key. This
+        // matches the Python `cryptography` Fernet format that legacy keyfiles
+        // were originally encrypted with.
+        let fernet_key = general_purpose::URL_SAFE.encode(&key);
+        let fernet = Fernet::new(&fernet_key).ok_or_else(|| {
+            KeyFileError::DecryptionError(
+                "Failed to construct Fernet key for legacy decryption.".to_string(),
+            )
+        })?;
         let keyfile_data_str = from_utf8(keyfile_data)
             .map_err(|e| KeyFileError::DeserializationError(e.to_string()))?;
         fernet.decrypt(keyfile_data_str).map_err(|_| {
@@ -930,5 +937,45 @@ impl Keyfile {
             utils::print(message);
             Ok(false)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression for https://github.com/latent-to/btwallet/issues/185:
+    // legacy_decrypt must use a Fernet key derived from the password, not a
+    // freshly generated random one.
+    #[test]
+    fn legacy_decrypt_uses_password_derived_key() {
+        let password = "correct horse battery staple";
+        let plaintext = b"{\"data\":\"0x00\"}";
+
+        // Build a legacy-format keyfile the same way historical Python
+        // `cryptography.Fernet` + PBKDF2 keyfiles were produced.
+        let mut key = vec![0u8; 32];
+        pbkdf2::pbkdf2_hmac::<sha2::Sha256>(
+            password.as_bytes(),
+            LEGACY_SALT,
+            10_000_000,
+            &mut key,
+        );
+        let fernet_key = general_purpose::URL_SAFE.encode(&key);
+        let fernet = Fernet::new(&fernet_key).expect("valid fernet key");
+        let token = fernet.encrypt(plaintext);
+
+        assert!(
+            keyfile_data_is_encrypted_legacy(token.as_bytes()),
+            "fernet token should be detected as legacy-encrypted",
+        );
+
+        let decrypted = decrypt_keyfile_data(
+            token.as_bytes(),
+            Some(password.to_string()),
+            None,
+        )
+        .expect("legacy decryption should succeed with password-derived key");
+        assert_eq!(&decrypted[..], plaintext);
     }
 }
