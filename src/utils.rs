@@ -113,6 +113,11 @@ pub fn print(s: String) {
     io::stdout().flush().unwrap();
 }
 
+/// Writes `s` through Python's `sys.stdout` so the output stays interleaved with
+/// Python-level I/O (Jupyter cells, logging redirects, captured stdout, etc.).
+///
+///     Arguments:
+///         s (String): The text to print.
 #[cfg(feature = "python-bindings")]
 pub fn print(s: String) {
     use pyo3::types::{PyDict, PyDictMethods};

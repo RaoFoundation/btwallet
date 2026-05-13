@@ -358,6 +358,15 @@ impl Keypair {
             data
         }
 
+        /// Builds an SR25519 (secret, public) byte tuple from raw Ed25519 key material.
+        ///
+        ///     Arguments:
+        ///         secret (&[u8]): The Ed25519 private key bytes.
+        ///         pubkey (&[u8]): The matching Ed25519 public key bytes.
+        ///     Returns:
+        ///         pair ([u8; 64], [u8; 32]): A tuple of the 64-byte secret key and 32-byte public key.
+        ///     Panics:
+        ///         If either input cannot be parsed by ``schnorrkel``.
         pub fn pair_from_ed25519_secret_key(secret: &[u8], pubkey: &[u8]) -> ([u8; 64], [u8; 32]) {
             match (
                 SecretKey::from_ed25519_bytes(secret),
@@ -629,6 +638,7 @@ impl Keypair {
         self.ss58_format
     }
 
+    /// Returns the seed bytes used to derive this keypair, if known.
     pub fn seed_hex(&self) -> Option<Vec<u8>> {
         self.seed_hex.clone()
     }
