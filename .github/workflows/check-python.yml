@@ -53,12 +53,13 @@ jobs:
           enable-cache: true
           python-version: "3.12"
 
-      - name: Install dev deps + substrate-legacy (no transitive)
+      - name: Install dev deps + substrate-legacy
         run: |
           uv venv
           echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+          uv pip install --group substrate-legacy
+          uv pip uninstall scalecodec -y
           uv pip install '.[dev]'
-          uv pip install --no-deps --group substrate-legacy
 
       - name: Build and install package
         run: maturin develop --features extension-module
