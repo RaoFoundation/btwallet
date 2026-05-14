@@ -72,6 +72,6 @@ dev = [
 
 [dependency-groups]
 substrate-legacy = [
-  "substrateinterface==1.8.1",
+  "substrate-interface==1.7.11",
   "scalecodec==1.2.12"
 ]
