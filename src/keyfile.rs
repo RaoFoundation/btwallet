@@ -26,10 +26,12 @@ const LEGACY_SALT: &[u8] = b"Iguesscyborgslikemyselfhaveatendencytobeparanoidabo
 
 /// Serializes keypair object into keyfile data.
 ///
+/// ```text
 ///     Arguments:
 ///         keypair (Keypair): The keypair object to be serialized.
 ///     Returns:
 ///         data (bytes): Serialized keypair data.
+/// ```
 pub fn serialized_keypair_to_keyfile_data(keypair: &Keypair) -> Result<Vec<u8>, KeyFileError> {
     let mut data: HashMap<&str, serde_json::Value> = HashMap::new();
 
@@ -70,12 +72,14 @@ pub fn serialized_keypair_to_keyfile_data(keypair: &Keypair) -> Result<Vec<u8>, 
 
 /// Deserializes Keypair object from passed keyfile data.
 ///
+/// ```text
 ///     Arguments:
 ///         keyfile_data (PyBytes): The keyfile data to be loaded.
 ///     Returns:
 ///         keypair (Keypair): The Keypair loaded from bytes.
 ///     Raises:
 ///         KeyFileError: Raised if the passed PyBytes cannot construct a keypair object.
+/// ```
 pub fn deserialize_keypair_from_keyfile_data(keyfile_data: &[u8]) -> Result<Keypair, KeyFileError> {
     // Decode the keyfile data from bytes to a string
     let decoded = from_utf8(keyfile_data).map_err(|_| {
@@ -118,10 +122,12 @@ pub fn deserialize_keypair_from_keyfile_data(keyfile_data: &[u8]) -> Result<Keyp
 
 /// Validates the password against a password policy.
 ///
+/// ```text
 ///     Arguments:
 ///         password (str): The password to verify.
 ///     Returns:
 ///         valid (bool): ``True`` if the password meets validity requirements.
+/// ```
 pub fn validate_password(password: &str) -> Result<bool, KeyFileError> {
     // Check for an empty password
     if password.is_empty() {
@@ -160,10 +166,12 @@ pub fn validate_password(password: &str) -> Result<bool, KeyFileError> {
 
 /// Prompts the user to enter a password for key encryption.
 ///
+/// ```text
 ///     Arguments:
 ///         validation_required (bool): If ``True``, validates the password against policy requirements.
 ///     Returns:
 ///         password (str): The valid password entered by the user.
+/// ```
 pub fn ask_password(validation_required: bool) -> Result<String, KeyFileError> {
     let mut valid = false;
     let mut password = utils::prompt_password("Enter your password: ".to_string());
@@ -186,40 +194,48 @@ pub fn ask_password(validation_required: bool) -> Result<String, KeyFileError> {
 
 /// Returns `true` if the keyfile data is NaCl encrypted.
 ///
+/// ```text
 ///     Arguments:
 ///         `keyfile_data` - Bytes to validate
 ///     Returns:
 ///         `is_nacl` - `true` if the data is ansible encrypted.
+/// ```
 pub fn keyfile_data_is_encrypted_nacl(keyfile_data: &[u8]) -> bool {
     keyfile_data.starts_with(b"$NACL")
 }
 
 /// Returns true if the keyfile data is ansible encrypted.
 ///
+/// ```text
 ///     Arguments:
 ///         `keyfile_data` - The bytes to validate.
 ///     Returns:
 ///         `is_ansible` - ``True`` if the data is ansible encrypted.
+/// ```
 pub fn keyfile_data_is_encrypted_ansible(keyfile_data: &[u8]) -> bool {
     keyfile_data.starts_with(b"$ANSIBLE_VAULT")
 }
 
 /// Returns true if the keyfile data is legacy encrypted.
 ///
+/// ```text
 ///     Arguments:
 ///         `keyfile_data` - The bytes to validate.
 ///     Returns:
 ///         `is_legacy` - `true` if the data is legacy encrypted.
+/// ```
 pub fn keyfile_data_is_encrypted_legacy(keyfile_data: &[u8]) -> bool {
     keyfile_data.starts_with(b"gAAAAA")
 }
 
 /// Returns `true` if the keyfile data is encrypted.
 ///
+/// ```text
 ///     Arguments:
 ///         keyfile_data (bytes): The bytes to validate.
 ///     Returns:
 ///         is_encrypted (bool): `true` if the data is encrypted.
+/// ```
 pub fn keyfile_data_is_encrypted(keyfile_data: &[u8]) -> bool {
     let nacl = keyfile_data_is_encrypted_nacl(keyfile_data);
     let ansible = keyfile_data_is_encrypted_ansible(keyfile_data);
@@ -229,10 +245,12 @@ pub fn keyfile_data_is_encrypted(keyfile_data: &[u8]) -> bool {
 
 /// Returns type of encryption method as a string.
 ///
+/// ```text
 ///     Arguments:
 ///         keyfile_data (bytes): Bytes to validate.
 ///     Returns:
 ///         (str): A string representing the name of encryption method.
+/// ```
 pub fn keyfile_data_encryption_method(keyfile_data: &[u8]) -> String {
     if keyfile_data_is_encrypted_nacl(keyfile_data) {
         "NaCl"
@@ -248,11 +266,13 @@ pub fn keyfile_data_encryption_method(keyfile_data: &[u8]) -> String {
 
 /// legacy_encrypt_keyfile_data.
 ///
+/// ```text
 ///     Arguments:
 ///         keyfile_data (bytes): Bytes of data from the keyfile.
 ///         password (str): Optional string that represents the password.
 ///     Returns:
 ///         encrypted_data (bytes): The encrypted keyfile data in bytes.
+/// ```
 pub fn legacy_encrypt_keyfile_data(
     keyfile_data: &[u8],
     password: Option<String>,
@@ -274,10 +294,12 @@ pub fn legacy_encrypt_keyfile_data(
 
 /// Retrieves the cold key password from the environment variables.
 ///
+/// ```text
 ///     Arguments:
 ///         `coldkey_name` - The name of the cold key.
 ///     Returns:
 ///         `Option<String>` - The password retrieved from the environment variables, or `None` if not found.
+/// ```
 pub fn get_password_from_environment(env_var_name: String) -> Result<Option<String>, KeyFileError> {
     match env::var(&env_var_name) {
         Ok(encrypted_password_base64) => {
@@ -308,11 +330,13 @@ fn derive_key(password: &[u8]) -> secretbox::Key {
 
 /// Encrypts the passed keyfile data using ansible vault.
 ///
+/// ```text
 ///     Arguments:
 ///         keyfile_data (bytes): The bytes to encrypt.
 ///         password (str): The password used to encrypt the data. If `None`, asks for user input.
 ///     Returns:
 ///         encrypted_data (bytes): The encrypted data.
+/// ```
 pub fn encrypt_keyfile_data(
     keyfile_data: &[u8],
     password: Option<String>,
@@ -342,12 +366,14 @@ pub fn encrypt_keyfile_data(
 
 /// Decrypts the passed keyfile data using ansible vault.
 ///
+/// ```text
 ///     Arguments:
 ///         keyfile_data (): The bytes to decrypt.
 ///         password (str): The password used to decrypt the data. If `None`, asks for user input.
 ///         coldkey_name (str): The name of the cold key. If provided, retrieves the password from environment variables.
 ///     Returns:
 ///         decrypted_data (bytes): The decrypted data.
+/// ```
 pub fn decrypt_keyfile_data(
     keyfile_data: &[u8],
     password: Option<String>,
@@ -482,12 +508,14 @@ impl std::fmt::Display for Keyfile {
 impl Keyfile {
     /// Creates a new Keyfile instance.
     ///
+    /// ```text
     ///     Arguments:
     ///         path (String): The file system path where the keyfile is stored.
     ///         name (Option<String>): Optional name for the keyfile. Defaults to "Keyfile" if not provided.
     ///         should_save_to_env (bool): If ``True``, saves the password to environment variables.
     ///     Returns:
     ///         keyfile (Keyfile): A new Keyfile instance.
+    /// ```
     pub fn new(
         path: String,
         name: Option<String>,
@@ -524,10 +552,12 @@ impl Keyfile {
 
     /// Returns the keypair from path, decrypts data if the file is encrypted.
     ///
+    /// ```text
     ///     Arguments:
     ///         password (Option<String>): The password used to decrypt the data. If ``None``, asks for user input.
     ///     Returns:
     ///         keypair (Keypair): The Keypair loaded from the file.
+    /// ```
     pub fn get_keypair(&self, password: Option<String>) -> Result<Keypair, KeyFileError> {
         // read file
         let keyfile_data = self._read_keyfile_data_from_file()?;
@@ -571,11 +601,13 @@ impl Keyfile {
 
     /// Writes the keypair to the file and optionally encrypts data.
     ///
+    /// ```text
     ///     Arguments:
     ///         keypair (Keypair): The keypair object to be stored.
     ///         encrypt (bool): If ``True``, encrypts the keyfile data.
     ///         overwrite (bool): If ``True``, overwrites existing file without prompting.
     ///         password (Option<String>): The password used to encrypt the data. If ``None``, asks for user input.
+    /// ```
     pub fn set_keypair(
         &self,
         keypair: Keypair,
@@ -620,8 +652,10 @@ impl Keyfile {
 
     /// Returns ``True`` if the file exists on the device.
     ///
+    /// ```text
     ///     Returns:
     ///         readable (bool): ``True`` if the file is readable.
+    /// ```
     pub fn exists_on_device(&self) -> Result<bool, KeyFileError> {
         Ok(self._path.exists())
     }
@@ -647,8 +681,10 @@ impl Keyfile {
 
     /// Returns ``True`` if the file under path is writable.
     ///
+    /// ```text
     ///     Returns:
     ///         writable (bool): ``True`` if the file is writable.
+    /// ```
     pub fn is_writable(&self) -> Result<bool, KeyFileError> {
         // check if file exist
         if !self.exists_on_device()? {
@@ -669,8 +705,10 @@ impl Keyfile {
 
     /// Returns ``True`` if the file under path is encrypted.
     ///
+    /// ```text
     ///     Returns:
     ///         encrypted (bool): ``True`` if the file is encrypted.
+    /// ```
     pub fn is_encrypted(&self) -> Result<bool, KeyFileError> {
         // check if file exist
         if !self.exists_on_device()? {
@@ -704,11 +742,13 @@ impl Keyfile {
 
     /// Check the version of keyfile and update if needed.
     ///
+    /// ```text
     ///     Arguments:
     ///         print_result (bool): If ``True``, prints the result of the encryption check.
     ///         no_prompt (bool): If ``True``, skips user prompts during the update process.
     ///     Returns:
     ///         updated (bool): ``True`` if the keyfile was successfully updated to the latest encryption method.
+    /// ```
     pub fn check_and_update_encryption(
         &self,
         print_result: bool,
@@ -823,8 +863,10 @@ impl Keyfile {
 
     /// Encrypts the file under the path.
     ///
+    /// ```text
     ///     Arguments:
     ///         password (Option<String>): The password used to encrypt the data. If ``None``, asks for user input.
+    /// ```
     pub fn encrypt(&self, mut password: Option<String>) -> Result<(), KeyFileError> {
         // checkers
         if !self.exists_on_device()? {
@@ -879,8 +921,10 @@ impl Keyfile {
 
     /// Decrypts the file under the path.
     ///
+    /// ```text
     ///     Arguments:
     ///         password (Option<String>): The password used to decrypt the data. If ``None``, asks for user input.
+    /// ```
     pub fn decrypt(&self, password: Option<String>) -> Result<(), KeyFileError> {
         // checkers
         if !self.exists_on_device()? {
@@ -920,10 +964,12 @@ impl Keyfile {
 
     /// Reads the keyfile data from the file.
     ///
+    /// ```text
     ///     Returns:
     ///         keyfile_data (Vec<u8>): The keyfile data stored under the path.
     ///     Raises:
     ///         KeyFileError: Raised if the file does not exist or is not readable.
+    /// ```
     pub fn _read_keyfile_data_from_file(&self) -> Result<Vec<u8>, KeyFileError> {
         // Check if the file exists
         if !self.exists_on_device()? {
@@ -953,9 +999,11 @@ impl Keyfile {
 
     /// Writes the keyfile data to the file.
     ///
+    /// ```text
     ///     Arguments:
     ///         keyfile_data: The byte data to store under the path.
     ///         overwrite: If true, overwrites the data without asking for permission from the user. Default is false.
+    /// ```
     pub fn _write_keyfile_data_to_file(
         &self,
         keyfile_data: &[u8],
@@ -996,10 +1044,12 @@ impl Keyfile {
 
     /// Saves the key's password to the associated local environment variable.
     ///
+    /// ```text
     ///     Arguments:
     ///         password (Option<String>): The password to save. If ``None``, asks for user input.
     ///     Returns:
     ///         encrypted_password_base64 (str): The base64-encoded encrypted password.
+    /// ```
     pub fn save_password_to_env(&self, password: Option<String>) -> Result<String, KeyFileError> {
         // checking the password
         let password = match password {
