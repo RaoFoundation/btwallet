@@ -52,7 +52,7 @@ jobs:
       run-sdk-tests: ${{ steps.get-labels.outputs.run-sdk-tests }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get labels from PR
         id: get-labels
@@ -108,7 +108,7 @@ jobs:
         run: docker save -o subtensor-localnet.tar ghcr.io/opentensor/subtensor-localnet:devnet-ready
 
       - name: Upload Docker Image as Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: subtensor-localnet
           path: subtensor-localnet.tar
@@ -144,7 +144,7 @@ jobs:
     name: "e2e tests: ${{ matrix.test-file }}"
     steps:
       - name: Check-out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -187,7 +187,7 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Checkout PR branch in btwallet repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
@@ -200,7 +200,7 @@ jobs:
           uv run --active maturin develop
 
       - name: Download Cached Docker Image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: subtensor-localnet
 
