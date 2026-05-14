@@ -60,7 +60,7 @@ dev = [
   "types-retry==0.9.9.4",
   "typing_extensions>= 4.0.0; python_version<'3.11'",
   "freezegun==1.5.0",
-  "httpx==0.27.0", # used by tests/unit_tests/test_axon: The starlette.testclient module requires the httpx package to be installed.
+  "httpx==0.27.0", # used by bittensor/tests/unit_tests/test_axon: The starlette.testclient module requires the httpx package to be installed.
   "ruff==0.15.12",
   "aioresponses==0.7.6",
   "factory-boy==3.3.3",
@@ -73,5 +73,4 @@ dev = [
 [dependency-groups]
 substrate-legacy = [
   "substrate-interface==1.7.11",
-  "scalecodec==1.2.12"
 ]
