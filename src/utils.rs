@@ -1,4 +1,3 @@
-use pyo3::pyfunction;
 use sp_core::crypto::{AccountId32, Ss58Codec};
 use std::str;
 
@@ -7,6 +6,11 @@ use crate::keypair::Keypair;
 pub(crate) const SS58_FORMAT: u8 = 42;
 
 /// Returns the SS58 format of the given address string.
+///
+///     Arguments:
+///         ss58_address (str): The SS58 address to extract the format from.
+///     Returns:
+///         format (u16): The SS58 format number.
 pub fn get_ss58_format(ss58_address: &str) -> Result<u16, &'static str> {
     match <AccountId32 as Ss58Codec>::from_ss58check_with_version(ss58_address) {
         Ok((_, format)) => Ok(u16::from(format)),
@@ -16,12 +20,10 @@ pub fn get_ss58_format(ss58_address: &str) -> Result<u16, &'static str> {
 
 /// Checks if the given address is a valid ss58 address.
 ///
-/// Args:
-///     address(str): The address to check.
-///
-/// Returns:
-///     True if the address is a valid ss58 address for Bittensor, False otherwise.
-#[pyfunction]
+///     Arguments:
+///         address (str): The address to check.
+///     Returns:
+///         ``True`` if the address is a valid ss58 address for Bittensor, ``False`` otherwise.
 pub fn is_valid_ss58_address(address: &str) -> bool {
     if address.is_empty() {
         // Possibly there could be a debug log, but not a print
@@ -34,11 +36,10 @@ pub fn is_valid_ss58_address(address: &str) -> bool {
 
 ///    Checks if the given public_key is a valid ed25519 key.
 ///
-///     Args:
-///         public_key: The public_key to check as string.
-///
+///     Arguments:
+///         public_key (str): The public_key to check as string.
 ///     Returns:
-///         True if the public_key is a valid ed25519 key, False otherwise.
+///         valid (bool): ``True`` if the public_key is a valid ed25519 key, ``False`` otherwise.
 pub fn is_string_valid_ed25519_pubkey(public_key: &str) -> bool {
     if public_key.len() != 64 && public_key.len() != 66 {
         return false;
@@ -55,11 +56,10 @@ pub fn is_string_valid_ed25519_pubkey(public_key: &str) -> bool {
 
 ///    Checks if the given public_key is a valid ed25519 key.
 ///
-///     Args:
-///         public_key: The public_key to check as bytes.
-///
+///     Arguments:
+///         public_key (bytes): The public_key to check as bytes.
 ///     Returns:
-///         True if the public_key is a valid ed25519 key, False otherwise.
+///         valid (bool): ``True`` if the public_key is a valid ed25519 key, ``False`` otherwise.
 pub fn are_bytes_valid_ed25519_pubkey(public_key: &[u8]) -> bool {
     if public_key.len() != 32 {
         return false;
@@ -76,16 +76,13 @@ pub fn are_bytes_valid_ed25519_pubkey(public_key: &[u8]) -> bool {
 
 ///    Checks if the given address is a valid destination address.
 ///
-///     Args:
-///         address(Union[str, bytes]): The address to check.
-///
+///     Arguments:
+///         address (str): The address to check.
 ///     Returns:
-///         True if the address is a valid destination address, False otherwise.
-#[pyfunction]
+///         valid (bool): ``True`` if the address is a valid destination address, ``False`` otherwise.
 pub fn is_valid_bittensor_address_or_public_key(address: &str) -> bool {
-    if address.starts_with("0x") {
-        // Convert hex string to bytes
-        if let Ok(bytes) = hex::decode(&address[2..]) {
+    if let Some(stripped) = address.strip_prefix("0x") {
+        if let Ok(bytes) = hex::decode(stripped) {
             are_bytes_valid_ed25519_pubkey(&bytes)
         } else {
             is_valid_ss58_address(address)
@@ -95,6 +92,9 @@ pub fn is_valid_bittensor_address_or_public_key(address: &str) -> bool {
     }
 }
 
+/// When running inside a Python process, output must go through Python's `sys.stdout`
+/// to stay synchronized with Python-level I/O (e.g. Jupyter, logging redirects).
+/// In pure Rust mode, standard stdout is used directly.
 #[cfg(not(feature = "python-bindings"))]
 pub fn print(s: String) {
     use std::io::{self, Write};
@@ -104,29 +104,29 @@ pub fn print(s: String) {
 
 #[cfg(feature = "python-bindings")]
 pub fn print(s: String) {
-    pyo3::Python::with_gil(|py| {
-        let locals = PyDict::new_bound(py);
+    use pyo3::types::{PyDict, PyDictMethods};
+    use std::ffi::CString;
+    pyo3::Python::attach(|py| {
+        let locals = PyDict::new(py);
         locals.set_item("s", s).unwrap();
-        py.run_bound(
+        let code = CString::new(
             r#"
 import sys
 print(s, end='')
 sys.stdout.flush()
 "#,
-            None,
-            Some(&locals),
         )
         .unwrap();
+        py.run(&code, None, Some(&locals)).unwrap();
     });
 }
 
 /// Prompts the user and returns the response, if any.
 ///    
-/// Args:
-///     prompt: String
-///
-/// Returns:
-///     response: Option<String>
+///     Arguments:
+///         prompt: String
+///     Returns:
+///         response: Option<String>
 pub fn prompt(prompt: String) -> Option<String> {
     use std::io::{self, Write};
 
@@ -142,11 +142,10 @@ pub fn prompt(prompt: String) -> Option<String> {
 
 /// Prompts the user with a password entry and returns the response, if any.
 ///    
-/// Args:
-///     prompt (String): the prompt to ask the user with.
-///
-/// Returns:
-///     response: Option<String>
+///     Arguments:
+///         prompt (String): the prompt to ask the user with.
+///     Returns:
+///         response: Option<String>
 pub fn prompt_password(prompt: String) -> Option<String> {
     use rpassword::read_password;
     use std::io::{self, Write};

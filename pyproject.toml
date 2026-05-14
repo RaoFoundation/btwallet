@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 keywords = ["substrate", "scale", "codec", "bittensor", "wallet"]
 
 dependencies = []
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 
 authors = [{ name = "Roman Chkhaidze", email = "r@latent.to" }]
 maintainers = [{ name = "Cortex Team", email = "cortex@opentensor.dev" }]
@@ -18,10 +18,11 @@ classifiers = [
   "Topic :: Software Development :: Build Tools",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Mathematics",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -38,6 +39,8 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
+bindings = "pyo3"
+features = ["extension-module"]
 include = ["bittensor_wallet*", "src*"]
 exclude = ["tests*"]
 
@@ -65,5 +68,5 @@ dev = [
   "ansible_vault~=2.1",
   "substrate-interface==1.7.11",
   "scalecodec~=1.2.11",
-  "bittensor>=9.7.0",
+  "bittensor>=10.0.0",
 ]

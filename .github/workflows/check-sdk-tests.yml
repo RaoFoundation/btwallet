@@ -147,11 +147,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust stable
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.rust-branch }}
           components: rustfmt
-          profile: minimal
 
       - name: Install rust/cargo dependencies
         run: |
@@ -188,15 +186,12 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: uv sync --all-extras --dev
 
-      - name: Clone Bittensor Wallet repo
-        run: git clone https://github.com/opentensor/btwallet.git
-
-      - name: Checkout PR branch in Wallet repo
-        working-directory: ${{ github.workspace }}/btwallet
-        run: |
-          git fetch origin ${{ github.event.pull_request.head.ref }}
-          git checkout ${{ github.event.pull_request.head.ref }}
-          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+      - name: Checkout PR branch in btwallet repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: btwallet
 
       - name: Build and install Rust Bittensor Wallet package
         working-directory: ${{ github.workspace }}
