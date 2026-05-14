@@ -53,11 +53,11 @@ jobs:
           enable-cache: true
           python-version: "3.12"
 
-      - name: Install dev deps
+      - name: Install dev deps + substrate-legacy group
         run: |
           uv venv
           echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
-          uv pip install '.[dev]'
+          uv pip install '.[dev]' --group substrate-legacy
 
       - name: Build and install package
         run: maturin develop --features extension-module
