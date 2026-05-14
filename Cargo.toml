@@ -1,7 +1,17 @@
 [package]
-name = "bittensor_wallet"
+name = "btwallet"
 version = "4.0.1"
 edition = "2021"
+license = "MIT"
+description = "Bittensor wallet — Substrate-based key management, encryption, and signing."
+repository = "https://github.com/opentensor/btwallet"
+homepage = "https://github.com/opentensor/btwallet"
+documentation = "https://docs.rs/btwallet"
+readme = "CRATE_README.md"
+keywords = ["bittensor", "wallet", "substrate", "crypto", "keypair"]
+categories = ["cryptography", "cryptography::cryptocurrencies"]
+rust-version = "1.74"
+include = ["src/**/*", "Cargo.toml", "LICENSE", "CRATE_README.md"]
 
 [lib]
 name = "bittensor_wallet"
@@ -10,7 +20,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sp-core = "34.0.0"
-pyo3 = { version = "0.26.0", features = ["generate-import-lib"] }
 bip39 = { version = "2.0.0", features = ["rand"] }
 hex = "0.4.3"
 colored = "2.1.0"
@@ -30,14 +39,19 @@ shellexpand = "3.1.0"
 rpassword = "7.3.1"
 clap = "4.5.21"
 thiserror = "2.0.3"
+pyo3 = { version = "0.26.0", features = ["generate-import-lib"], optional = true }
 
 [dependencies.openssl-sys]
 version = "0.9"
 optional = true
 features = ["vendored"]
 
+[package.metadata.docs.rs]
+features = ["vendored-openssl"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
-extension-module = ["pyo3/extension-module"]
+default = []
+python-bindings = ["dep:pyo3"]
+extension-module = ["python-bindings", "pyo3/extension-module"]
 vendored-openssl = ["openssl-sys/vendored"]
-default = ["extension-module"]
-python-bindings = []

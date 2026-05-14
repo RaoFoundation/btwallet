@@ -52,6 +52,17 @@ pub struct Keypair {
 }
 
 impl Keypair {
+    /// Creates a new Keypair instance.
+    ///
+    ///     Arguments:
+    ///         ss58_address (Option<String>): Optional SS58-formatted address.
+    ///         public_key (Option<String>): Optional public key as hex string.
+    ///         private_key (Option<String>): Optional private key as hex string.
+    ///         ss58_format (u8): The SS58 format number for address encoding.
+    ///         seed_hex (Option<Vec<u8>>): Optional seed bytes.
+    ///         crypto_type (u8): The cryptographic algorithm type (1 for SR25519).
+    ///     Returns:
+    ///         keypair (Keypair): A new Keypair instance.
     pub fn new(
         ss58_address: Option<String>,
         public_key: Option<String>,
@@ -129,11 +140,23 @@ impl Keypair {
         self.__str__()
     }
 
+    /// Generates a new mnemonic phrase.
+    ///
+    ///     Arguments:
+    ///         n_words (usize): The number of words in the mnemonic (e.g., 12, 15, 18, 21, 24).
+    ///     Returns:
+    ///         mnemonic (String): The generated mnemonic phrase.
     pub fn generate_mnemonic(n_words: usize) -> Result<String, String> {
         let mnemonic = Mnemonic::generate(n_words).map_err(|e| e.to_string())?;
         Ok(mnemonic.to_string())
     }
 
+    /// Creates a Keypair from a mnemonic phrase.
+    ///
+    ///     Arguments:
+    ///         mnemonic (str): The mnemonic phrase to create the keypair from.
+    ///     Returns:
+    ///         keypair (Keypair): The Keypair created from the mnemonic.
     pub fn create_from_mnemonic(mnemonic: &str) -> Result<Self, String> {
         let (pair, seed_vec) =
             sr25519::Pair::from_phrase(mnemonic, None).map_err(|e| e.to_string())?;
@@ -147,6 +170,12 @@ impl Keypair {
         Ok(kp)
     }
 
+    /// Creates a Keypair from a seed.
+    ///
+    ///     Arguments:
+    ///         seed (Vec<u8>): The seed bytes to create the keypair from.
+    ///     Returns:
+    ///         keypair (Keypair): The Keypair created from the seed.
     pub fn create_from_seed(seed: Vec<u8>) -> Result<Self, String> {
         let pair = sr25519::Pair::from_seed_slice(&seed)
             .map_err(|e| format!("Failed to create pair from seed: {}", e))?;
@@ -159,6 +188,12 @@ impl Keypair {
         Ok(kp)
     }
 
+    /// Creates a Keypair from a private key.
+    ///
+    ///     Arguments:
+    ///         private_key (str): The private key as hex string to create the keypair from.
+    ///     Returns:
+    ///         keypair (Keypair): The Keypair created from the private key.
     pub fn create_from_private_key(private_key: &str) -> Result<Self, String> {
         let private_key_vec = hex::decode(private_key.trim_start_matches("0x"))
             .map_err(|e| format!("Invalid `private_key` string: {}", e))?;
@@ -173,6 +208,13 @@ impl Keypair {
         Ok(kp)
     }
 
+    /// Creates a Keypair from encrypted JSON data.
+    ///
+    ///     Arguments:
+    ///         json_data (str): The encrypted JSON data containing the keypair.
+    ///         passphrase (str): The passphrase to decrypt the JSON data.
+    ///     Returns:
+    ///         keypair (Keypair): The Keypair created from the encrypted JSON.
     pub fn create_from_encrypted_json(
         json_data: &str,
         passphrase: &str,
@@ -277,6 +319,12 @@ impl Keypair {
         keypair
     }
 
+    /// Creates a Keypair from a URI string.
+    ///
+    ///     Arguments:
+    ///         uri (str): The URI string to create the keypair from.
+    ///     Returns:
+    ///         keypair (Keypair): The Keypair created from the URI.
     pub fn create_from_uri(uri: &str) -> Result<Self, String> {
         let pair = Pair::from_string(uri, None).map_err(|e| e.to_string())?;
 
@@ -287,6 +335,12 @@ impl Keypair {
         Ok(kp)
     }
 
+    /// Signs data with the keypair's private key.
+    ///
+    ///     Arguments:
+    ///         data (Vec<u8>): The data to sign as bytes.
+    ///     Returns:
+    ///         signature (Vec<u8>): The signature as bytes.
     pub fn sign(&self, data: Vec<u8>) -> Result<Vec<u8>, String> {
         // Check if private key exists
         let pair = self
@@ -308,6 +362,13 @@ impl Keypair {
         Ok(signature.to_vec())
     }
 
+    /// Verifies a signature against data using the keypair's public key.
+    ///
+    ///     Arguments:
+    ///         data (Vec<u8>): The data that was signed as bytes.
+    ///         signature (Vec<u8>): The signature to verify as bytes.
+    ///     Returns:
+    ///         verified (bool): ``True`` if the signature is valid, ``False`` otherwise.
     pub fn verify(&self, data: Vec<u8>, signature: Vec<u8>) -> Result<bool, String> {
         // Check if public key exists
         let public_key = if let Some(public_key_str) = &self.public_key {
@@ -358,6 +419,7 @@ impl Keypair {
         }
     }
 
+    /// Returns the SS58 address of the keypair.
     pub fn ss58_address(&self) -> Option<String> {
         match &self.pair {
             Some(pair) => {
@@ -368,6 +430,7 @@ impl Keypair {
         }
     }
 
+    /// Returns the public key of the keypair as bytes.
     pub fn public_key(&self) -> Result<Option<Vec<u8>>, String> {
         if let Some(pair) = &self.pair {
             let public_key_vec = pair.public().to_vec();
@@ -381,6 +444,7 @@ impl Keypair {
         }
     }
 
+    /// Returns the SS58 format number.
     pub fn ss58_format(&self) -> u8 {
         self.ss58_format
     }
@@ -389,18 +453,25 @@ impl Keypair {
         self.seed_hex.clone()
     }
 
+    /// Returns the cryptographic algorithm type.
     pub fn crypto_type(&self) -> u8 {
         self.crypto_type
     }
 
+    /// Sets the cryptographic algorithm type.
+    ///
+    ///     Arguments:
+    ///         crypto_type (u8): The cryptographic algorithm type (1 for SR25519).
     pub fn set_crypto_type(&mut self, crypto_type: u8) {
         self.crypto_type = crypto_type;
     }
 
+    /// Returns the mnemonic phrase of the keypair.
     pub fn mnemonic(&self) -> Option<String> {
         self.mnemonic.clone()
     }
 
+    /// Returns the private key of the keypair as bytes.
     pub fn private_key(&self) -> Result<Option<Vec<u8>>, String> {
         match &self.pair {
             Some(pair) => {
