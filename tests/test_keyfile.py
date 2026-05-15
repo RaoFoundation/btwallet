@@ -608,3 +608,11 @@ def test_ed25519_ciphertext_length():
     message = b"hello world"
     ciphertext = kp.encrypt(message)
     assert len(ciphertext) == len(message) + 48
+
+
+def test_encrypt_for_static_method():
+    """Test that encrypt_for encrypts for a given address and the owner can decrypt."""
+    bob = Keypair.create_from_uri("//Bob", crypto_type=0)
+    ciphertext = Keypair.encrypt_for(bob.ss58_address, b"hello bob")
+    plaintext = bob.decrypt(ciphertext)
+    assert plaintext == b"hello bob"

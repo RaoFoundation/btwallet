@@ -361,6 +361,15 @@ impl PyKeypair {
             .map_err(PyErr::new::<PyValueError, _>)
     }
 
+    #[staticmethod]
+    #[pyo3(signature = (ss58_address, message, crypto_type=0))]
+    fn encrypt_for(ss58_address: &str, message: Vec<u8>, crypto_type: u8) -> PyResult<Vec<u8>> {
+        let kp = RustKeypair::new(Some(ss58_address.to_string()), None, None, 42, None, crypto_type)
+            .map_err(PyErr::new::<PyValueError, _>)?;
+        kp.encrypt(&message)
+            .map_err(PyErr::new::<PyValueError, _>)
+    }
+
     #[getter]
     fn ss58_address(&self) -> Option<String> {
         self.inner.ss58_address()
