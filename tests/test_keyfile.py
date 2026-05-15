@@ -555,3 +555,56 @@ def test_legacy_keyfile_without_crypto_type_defaults_sr25519():
     kp = deserialize_keypair_from_keyfile_data(legacy_json)
     assert kp.crypto_type == 1
     assert kp.ss58_address == "5HDvhV6WDCjCKyrXqGQSDYqQAzkzabNhctmiDYEqgBC66BsX"
+
+
+# --- Encrypt/Decrypt tests ---
+
+
+def test_ed25519_encrypt_decrypt_roundtrip():
+    """Test ED25519 encrypt then decrypt returns original message."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=0)
+    message = b"secret message for testing"
+    ciphertext = kp.encrypt(message)
+    plaintext = kp.decrypt(ciphertext)
+    assert plaintext == message
+
+
+def test_ed25519_encrypt_sr25519_raises():
+    """Test that encrypt raises ValueError on SR25519 keypair."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=1)
+    with pytest.raises(ValueError, match="ED25519"):
+        kp.encrypt(b"hello")
+
+
+def test_ed25519_decrypt_pubonly_raises():
+    """Test that decrypt raises on a pub-only keypair (no private key)."""
+    full = Keypair.create_from_uri("//Alice", crypto_type=0)
+    ciphertext = full.encrypt(b"hello")
+    pub_only = Keypair(ss58_address=full.ss58_address, crypto_type=0)
+    with pytest.raises(ValueError, match="private key"):
+        pub_only.decrypt(ciphertext)
+
+
+def test_ed25519_decrypt_wrong_key_raises():
+    """Test that decrypt with wrong key raises an error."""
+    alice = Keypair.create_from_uri("//Alice", crypto_type=0)
+    bob = Keypair.create_from_uri("//Bob", crypto_type=0)
+    ciphertext = alice.encrypt(b"for alice only")
+    with pytest.raises(ValueError):
+        bob.decrypt(ciphertext)
+
+
+def test_ed25519_encrypt_produces_different_ciphertexts():
+    """Test that encrypting the same message twice produces different ciphertexts."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=0)
+    ct1 = kp.encrypt(b"same message")
+    ct2 = kp.encrypt(b"same message")
+    assert ct1 != ct2
+
+
+def test_ed25519_ciphertext_length():
+    """Test that ciphertext is exactly 48 bytes longer than the plaintext."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=0)
+    message = b"hello world"
+    ciphertext = kp.encrypt(message)
+    assert len(ciphertext) == len(message) + 48
