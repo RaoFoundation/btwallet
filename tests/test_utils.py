@@ -62,3 +62,22 @@ def test_is_valid_bittensor_address_or_public_key_integration(address, excepted_
     """Integration test for is_valid_bittensor_address_or_public_key function."""
 
     assert utils.is_valid_bittensor_address_or_public_key(address) is excepted_result
+
+
+# --- ED25519 Utils tests ---
+
+
+def test_ed25519_address_is_valid_ss58():
+    """Test that an ED25519-derived SS58 address passes validation."""
+    from bittensor_wallet.keypair import Keypair
+
+    keypair = Keypair.create_from_uri("//Alice", crypto_type=0)
+    assert utils.is_valid_ss58_address(keypair.ss58_address) is True
+
+
+def test_ed25519_pubkey_is_valid_bittensor_address():
+    """Test that an ED25519 public key passes bittensor address validation."""
+    from bittensor_wallet.keypair import Keypair
+
+    keypair = Keypair.create_from_uri("//Alice", crypto_type=0)
+    assert utils.is_valid_bittensor_address_or_public_key(keypair.ss58_address) is True

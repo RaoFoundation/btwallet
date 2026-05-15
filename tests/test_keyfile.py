@@ -430,3 +430,128 @@ def test_get_coldkey_password_from_environment(tmp_path, encrypted, decrypted):
         == decrypted
     )
     assert get_coldkey_password_from_environment("non_existent_env_variable") is None
+
+
+# --- ED25519 Keypair tests ---
+
+
+def test_create_ed25519_keypair():
+    """Test creation of an ED25519 keypair from a mnemonic."""
+    mnemonic = "old leopard transfer rib spatial phone calm indicate online fire caution review"
+    keypair = Keypair.create_from_mnemonic(mnemonic, crypto_type=0)
+    assert keypair.crypto_type == 0
+    assert keypair.ss58_address is not None
+    assert len(keypair.public_key) == 32
+
+
+def test_ed25519_different_address_from_sr25519():
+    """Test that ED25519 and SR25519 produce different addresses from the same mnemonic."""
+    mnemonic = "old leopard transfer rib spatial phone calm indicate online fire caution review"
+    sr = Keypair.create_from_mnemonic(mnemonic, crypto_type=1)
+    ed = Keypair.create_from_mnemonic(mnemonic, crypto_type=0)
+    assert sr.ss58_address != ed.ss58_address
+    assert sr.public_key != ed.public_key
+
+
+def test_ed25519_sign_and_verify():
+    """Test ED25519 signing and verification."""
+    mnemonic = Keypair.generate_mnemonic()
+    keypair = Keypair.create_from_mnemonic(mnemonic, crypto_type=0)
+    signature = keypair.sign("Test1231223123123")
+    assert keypair.verify("Test1231223123123", signature) is True
+
+
+def test_ed25519_sign_and_verify_invalid_message():
+    """Test ED25519 verification fails with wrong message."""
+    mnemonic = Keypair.generate_mnemonic()
+    keypair = Keypair.create_from_mnemonic(mnemonic, crypto_type=0)
+    signature = keypair.sign("Test1231223123123")
+    assert keypair.verify("OtherMessage", signature) is False
+
+
+def test_ed25519_from_seed():
+    """Test creating an ED25519 keypair from a hex seed."""
+    seed = "0x" + "ff" * 32
+    keypair = Keypair.create_from_seed(seed, crypto_type=0)
+    assert keypair.crypto_type == 0
+    assert keypair.ss58_address is not None
+    assert len(keypair.public_key) == 32
+
+
+def test_ed25519_from_uri():
+    """Test creating an ED25519 keypair from a URI."""
+    keypair = Keypair.create_from_uri("//Alice", crypto_type=0)
+    assert keypair.crypto_type == 0
+    assert keypair.ss58_address is not None
+
+
+def test_ed25519_default_is_sr25519():
+    """Test that default crypto_type is SR25519."""
+    mnemonic = Keypair.generate_mnemonic()
+    keypair = Keypair.create_from_mnemonic(mnemonic)
+    assert keypair.crypto_type == 1
+
+
+def test_set_crypto_type_on_active_keypair_raises():
+    """Test that setting crypto_type on an initialized keypair raises ValueError."""
+    keypair = Keypair.create_from_mnemonic(Keypair.generate_mnemonic())
+    with pytest.raises(ValueError):
+        keypair.crypto_type = 0
+
+
+def test_set_crypto_type_on_pubonly_keypair():
+    """Test that setting crypto_type on a pub-only keypair works."""
+    keypair = Keypair(ss58_address="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY")
+    keypair.crypto_type = 0
+    assert keypair.crypto_type == 0
+
+
+# --- ED25519 Keyfile serialization tests ---
+
+
+def test_ed25519_serialized_keypair_contains_crypto_type():
+    """Test that serialized ED25519 keypair JSON contains cryptoType field."""
+    from bittensor_wallet.keyfile import serialized_keypair_to_keyfile_data
+
+    mnemonic = Keypair.generate_mnemonic()
+    keypair = Keypair.create_from_mnemonic(mnemonic, crypto_type=0)
+    data = json.loads(serialized_keypair_to_keyfile_data(keypair).decode())
+    assert data["cryptoType"] == 0
+
+
+def test_sr25519_serialized_keypair_contains_crypto_type():
+    """Test that serialized SR25519 keypair JSON contains cryptoType field."""
+    from bittensor_wallet.keyfile import serialized_keypair_to_keyfile_data
+
+    mnemonic = Keypair.generate_mnemonic()
+    keypair = Keypair.create_from_mnemonic(mnemonic, crypto_type=1)
+    data = json.loads(serialized_keypair_to_keyfile_data(keypair).decode())
+    assert data["cryptoType"] == 1
+
+
+def test_ed25519_deserialize_roundtrip():
+    """Test ED25519 keypair serialize/deserialize roundtrip preserves identity."""
+    from bittensor_wallet.keyfile import serialized_keypair_to_keyfile_data
+    from bittensor_wallet.keyfile import deserialize_keypair_from_keyfile_data
+
+    mnemonic = "old leopard transfer rib spatial phone calm indicate online fire caution review"
+    original = Keypair.create_from_mnemonic(mnemonic, crypto_type=0)
+    data = serialized_keypair_to_keyfile_data(original)
+    restored = deserialize_keypair_from_keyfile_data(data)
+
+    assert restored.ss58_address == original.ss58_address
+    assert restored.crypto_type == 0
+    assert restored.public_key == original.public_key
+
+
+def test_legacy_keyfile_without_crypto_type_defaults_sr25519():
+    """Test that legacy keyfile JSON without cryptoType defaults to SR25519."""
+    from bittensor_wallet.keyfile import deserialize_keypair_from_keyfile_data
+
+    legacy_json = json.dumps({
+        "secretPhrase": "old leopard transfer rib spatial phone calm indicate online fire caution review",
+        "ss58Address": "5HDvhV6WDCjCKyrXqGQSDYqQAzkzabNhctmiDYEqgBC66BsX"
+    }).encode()
+    kp = deserialize_keypair_from_keyfile_data(legacy_json)
+    assert kp.crypto_type == 1
+    assert kp.ss58_address == "5HDvhV6WDCjCKyrXqGQSDYqQAzkzabNhctmiDYEqgBC66BsX"
