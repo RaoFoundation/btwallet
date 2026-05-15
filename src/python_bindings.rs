@@ -1,6 +1,8 @@
 use std::{borrow::Cow, env, ffi::CString, str};
 
-use crate::constants::{BT_WALLET_HOTKEY, BT_WALLET_NAME, BT_WALLET_PATH};
+use crate::constants::{
+    BT_WALLET_HOTKEY, BT_WALLET_NAME, BT_WALLET_PATH, CRYPTO_ED25519, CRYPTO_SR25519,
+};
 use crate::errors::{ConfigurationError, KeyFileError, PasswordError, WalletError};
 use crate::keyfile;
 use crate::keyfile::Keyfile as RustKeyfile;
@@ -228,25 +230,27 @@ impl PyKeypair {
     }
 
     #[staticmethod]
-    fn create_from_mnemonic(mnemonic: &str) -> PyResult<Self> {
-        let keypair =
-            RustKeypair::create_from_mnemonic(mnemonic).map_err(PyErr::new::<PyValueError, _>)?;
+    #[pyo3(signature = (mnemonic, crypto_type=1))]
+    fn create_from_mnemonic(mnemonic: &str, crypto_type: u8) -> PyResult<Self> {
+        let keypair = RustKeypair::create_from_mnemonic(mnemonic, crypto_type)
+            .map_err(PyErr::new::<PyValueError, _>)?;
         Ok(PyKeypair { inner: keypair })
     }
 
-    /// Creates Keypair from a seed for python
     #[staticmethod]
-    fn create_from_seed(py: Python, seed: &str) -> PyResult<Py<Self>> {
+    #[pyo3(signature = (seed, crypto_type=1))]
+    fn create_from_seed(py: Python, seed: &str, crypto_type: u8) -> PyResult<Py<Self>> {
         let vec_seed = hex::decode(seed.trim_start_matches("0x"))
             .map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?;
-        let keypair = RustKeypair::create_from_seed(vec_seed)
+        let keypair = RustKeypair::create_from_seed(vec_seed, crypto_type)
             .map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?;
         Py::new(py, PyKeypair { inner: keypair })
     }
 
     #[staticmethod]
-    fn create_from_private_key(private_key: &str) -> PyResult<Self> {
-        let keypair = RustKeypair::create_from_private_key(private_key)
+    #[pyo3(signature = (private_key, crypto_type=1))]
+    fn create_from_private_key(private_key: &str, crypto_type: u8) -> PyResult<Self> {
+        let keypair = RustKeypair::create_from_private_key(private_key, crypto_type)
             .map_err(PyErr::new::<PyValueError, _>)?;
         Ok(PyKeypair { inner: keypair })
     }
@@ -259,8 +263,10 @@ impl PyKeypair {
     }
 
     #[staticmethod]
-    fn create_from_uri(uri: &str) -> PyResult<Self> {
-        let keypair = RustKeypair::create_from_uri(uri).map_err(PyErr::new::<PyValueError, _>)?;
+    #[pyo3(signature = (uri, crypto_type=1))]
+    fn create_from_uri(uri: &str, crypto_type: u8) -> PyResult<Self> {
+        let keypair = RustKeypair::create_from_uri(uri, crypto_type)
+            .map_err(PyErr::new::<PyValueError, _>)?;
         Ok(PyKeypair { inner: keypair })
     }
 
@@ -365,8 +371,21 @@ impl PyKeypair {
     }
 
     #[setter]
-    fn set_crypto_type(&mut self, crypto_type: u8) {
-        self.inner.set_crypto_type(crypto_type)
+    fn set_crypto_type(&mut self, crypto_type: u8) -> PyResult<()> {
+        if self.inner.pair_is_some() {
+            return Err(PyErr::new::<PyValueError, _>(
+                "Cannot change crypto_type on a keypair with an active key pair. \
+                 Create a new keypair with the desired crypto_type instead.",
+            ));
+        }
+        if crypto_type != CRYPTO_SR25519 && crypto_type != CRYPTO_ED25519 {
+            return Err(PyErr::new::<PyValueError, _>(format!(
+                "Unsupported crypto type: {}. Use 0 (ED25519) or 1 (SR25519).",
+                crypto_type
+            )));
+        }
+        self.inner.set_crypto_type_field(crypto_type);
+        Ok(())
     }
 }
 
@@ -767,6 +786,7 @@ pub struct Wallet {
 }
 
 #[pymethods]
+#[allow(clippy::too_many_arguments)]
 impl Wallet {
     #[new]
     #[pyo3(signature = (name=None, hotkey=None, path=None, config=None))]
@@ -890,7 +910,7 @@ except argparse.ArgumentError:
 
     #[allow(clippy::too_many_arguments)]
     #[pyo3(
-        signature = (coldkey_use_password=Some(true), hotkey_use_password=Some(false), save_coldkey_to_env=Some(false), save_hotkey_to_env=Some(false), coldkey_password=None, hotkey_password=None, overwrite=Some(false), suppress=Some(false))
+        signature = (coldkey_use_password=Some(true), hotkey_use_password=Some(false), save_coldkey_to_env=Some(false), save_hotkey_to_env=Some(false), coldkey_password=None, hotkey_password=None, overwrite=Some(false), suppress=Some(false), coldkey_crypto_type=Some(1), hotkey_crypto_type=Some(1))
     )]
     fn create_if_non_existent(
         &mut self,
@@ -902,6 +922,8 @@ except argparse.ArgumentError:
         hotkey_password: Option<String>,
         overwrite: Option<bool>,
         suppress: Option<bool>,
+        coldkey_crypto_type: Option<u8>,
+        hotkey_crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         let result = self
             .inner
@@ -914,6 +936,8 @@ except argparse.ArgumentError:
                 hotkey_password,
                 overwrite.unwrap_or(false),
                 suppress.unwrap_or(false),
+                coldkey_crypto_type.unwrap_or(CRYPTO_SR25519),
+                hotkey_crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map_err(|e| match e {
                 WalletError::InvalidInput(_) | WalletError::KeyGeneration(_) => {
@@ -949,7 +973,7 @@ except argparse.ArgumentError:
     ///         WalletError: If key generation or file operations fail.
     /// ```
     #[allow(clippy::too_many_arguments)]
-    #[pyo3(signature = (coldkey_use_password=true, hotkey_use_password=false, save_coldkey_to_env=false, save_hotkey_to_env=false, coldkey_password=None, hotkey_password=None, overwrite=false, suppress=false))]
+    #[pyo3(signature = (coldkey_use_password=true, hotkey_use_password=false, save_coldkey_to_env=false, save_hotkey_to_env=false, coldkey_password=None, hotkey_password=None, overwrite=false, suppress=false, coldkey_crypto_type=1, hotkey_crypto_type=1))]
     pub fn create(
         &mut self,
         coldkey_use_password: Option<bool>,
@@ -960,6 +984,8 @@ except argparse.ArgumentError:
         hotkey_password: Option<String>,
         overwrite: Option<bool>,
         suppress: Option<bool>,
+        coldkey_crypto_type: Option<u8>,
+        hotkey_crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         let result = self
             .inner
@@ -972,6 +998,8 @@ except argparse.ArgumentError:
                 hotkey_password,
                 overwrite.unwrap_or(false),
                 suppress.unwrap_or(false),
+                coldkey_crypto_type.unwrap_or(CRYPTO_SR25519),
+                hotkey_crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map_err(|e| match e {
                 WalletError::InvalidInput(_) | WalletError::KeyGeneration(_) => {
@@ -985,7 +1013,7 @@ except argparse.ArgumentError:
 
     #[allow(clippy::too_many_arguments)]
     #[pyo3(
-        signature = (coldkey_use_password=Some(true), hotkey_use_password=Some(false), save_coldkey_to_env=Some(false), save_hotkey_to_env=Some(false), coldkey_password=None, hotkey_password=None, overwrite=Some(false), suppress=Some(false))
+        signature = (coldkey_use_password=Some(true), hotkey_use_password=Some(false), save_coldkey_to_env=Some(false), save_hotkey_to_env=Some(false), coldkey_password=None, hotkey_password=None, overwrite=Some(false), suppress=Some(false), coldkey_crypto_type=Some(1), hotkey_crypto_type=Some(1))
     )]
     fn recreate(
         &mut self,
@@ -997,6 +1025,8 @@ except argparse.ArgumentError:
         hotkey_password: Option<String>,
         overwrite: Option<bool>,
         suppress: Option<bool>,
+        coldkey_crypto_type: Option<u8>,
+        hotkey_crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         let result = self
             .inner
@@ -1009,6 +1039,8 @@ except argparse.ArgumentError:
                 hotkey_password,
                 overwrite.unwrap_or(false),
                 suppress.unwrap_or(false),
+                coldkey_crypto_type.unwrap_or(CRYPTO_SR25519),
+                hotkey_crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map_err(|e| match e {
                 WalletError::InvalidInput(_) | WalletError::KeyGeneration(_) => {
@@ -1201,7 +1233,7 @@ except argparse.ArgumentError:
     }
 
     #[pyo3(
-        signature = (uri, use_password=false, overwrite=false, suppress=true, save_coldkey_to_env=false, coldkey_password=None)
+        signature = (uri, use_password=false, overwrite=false, suppress=true, save_coldkey_to_env=false, coldkey_password=None, crypto_type=1)
     )]
     fn create_coldkey_from_uri(
         &mut self,
@@ -1211,6 +1243,7 @@ except argparse.ArgumentError:
         suppress: Option<bool>,
         save_coldkey_to_env: Option<bool>,
         coldkey_password: Option<String>,
+        crypto_type: Option<u8>,
     ) -> PyResult<()> {
         self.inner
             .create_coldkey_from_uri(
@@ -1220,6 +1253,7 @@ except argparse.ArgumentError:
                 suppress.unwrap_or(false),
                 save_coldkey_to_env.unwrap_or(false),
                 coldkey_password,
+                crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map(|_| ())
             .map_err(|e| {
@@ -1231,7 +1265,7 @@ except argparse.ArgumentError:
     }
 
     #[pyo3(
-        signature = (uri, use_password=false, overwrite=false, suppress=true, save_hotkey_to_env=false, hotkey_password=None)
+        signature = (uri, use_password=false, overwrite=false, suppress=true, save_hotkey_to_env=false, hotkey_password=None, crypto_type=1)
     )]
     fn create_hotkey_from_uri(
         &mut self,
@@ -1241,6 +1275,7 @@ except argparse.ArgumentError:
         suppress: Option<bool>,
         save_hotkey_to_env: Option<bool>,
         hotkey_password: Option<String>,
+        crypto_type: Option<u8>,
     ) -> PyResult<()> {
         self.inner
             .create_hotkey_from_uri(
@@ -1250,6 +1285,7 @@ except argparse.ArgumentError:
                 suppress.unwrap_or(false),
                 save_hotkey_to_env.unwrap_or(false),
                 hotkey_password,
+                crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map(|_| ())
             .map_err(|e| {
@@ -1314,7 +1350,7 @@ except argparse.ArgumentError:
 
     #[pyo3(
         name = "create_new_coldkey",
-        signature = (n_words=Some(12), use_password=None, overwrite=None, suppress=None, save_coldkey_to_env=None, coldkey_password=None)
+        signature = (n_words=Some(12), use_password=None, overwrite=None, suppress=None, save_coldkey_to_env=None, coldkey_password=None, crypto_type=Some(1))
     )]
     fn new_coldkey(
         &mut self,
@@ -1324,6 +1360,7 @@ except argparse.ArgumentError:
         suppress: Option<bool>,
         save_coldkey_to_env: Option<bool>,
         coldkey_password: Option<String>,
+        crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         self.inner
             .new_coldkey(
@@ -1333,6 +1370,7 @@ except argparse.ArgumentError:
                 suppress.unwrap_or(false),
                 save_coldkey_to_env.unwrap_or(false),
                 coldkey_password,
+                crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map(|inner| Wallet { inner })
             .map_err(|e| {
@@ -1342,7 +1380,7 @@ except argparse.ArgumentError:
 
     #[pyo3(
         name = "create_new_hotkey",
-        signature = (n_words=Some(12), use_password=None, overwrite=None, suppress=None, save_hotkey_to_env=None, hotkey_password=None)
+        signature = (n_words=Some(12), use_password=None, overwrite=None, suppress=None, save_hotkey_to_env=None, hotkey_password=None, crypto_type=Some(1))
     )]
     fn new_hotkey(
         &mut self,
@@ -1352,6 +1390,7 @@ except argparse.ArgumentError:
         suppress: Option<bool>,
         save_hotkey_to_env: Option<bool>,
         hotkey_password: Option<String>,
+        crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         self.inner
             .new_hotkey(
@@ -1361,6 +1400,7 @@ except argparse.ArgumentError:
                 suppress.unwrap_or(false),
                 save_hotkey_to_env.unwrap_or(false),
                 hotkey_password,
+                crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map(|inner| Wallet { inner })
             .map_err(|e| {
@@ -1376,7 +1416,8 @@ except argparse.ArgumentError:
         overwrite=false,
         suppress=false,
         save_coldkey_to_env=false,
-        coldkey_password=None
+        coldkey_password=None,
+        crypto_type=1
     ))]
     #[allow(clippy::too_many_arguments)]
     fn regenerate_coldkey(
@@ -1389,6 +1430,7 @@ except argparse.ArgumentError:
         suppress: Option<bool>,
         save_coldkey_to_env: Option<bool>,
         coldkey_password: Option<String>,
+        crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         let new_inner_wallet = self
             .inner
@@ -1401,6 +1443,7 @@ except argparse.ArgumentError:
                 suppress.unwrap_or(false),
                 save_coldkey_to_env.unwrap_or(false),
                 coldkey_password,
+                crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map_err(|e| match e {
                 WalletError::InvalidInput(_) | WalletError::KeyGeneration(_) => {
@@ -1414,16 +1457,22 @@ except argparse.ArgumentError:
         })
     }
 
-    #[pyo3(signature = (ss58_address=None, public_key=None, overwrite=None))]
+    #[pyo3(signature = (ss58_address=None, public_key=None, overwrite=None, crypto_type=1))]
     fn regenerate_coldkeypub(
         &mut self,
         ss58_address: Option<String>,
         public_key: Option<String>,
         overwrite: Option<bool>,
+        crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         let new_inner_wallet = self
             .inner
-            .regenerate_coldkeypub(ss58_address, public_key, overwrite.unwrap_or(false))
+            .regenerate_coldkeypub(
+                ss58_address,
+                public_key,
+                overwrite.unwrap_or(false),
+                crypto_type.unwrap_or(CRYPTO_SR25519),
+            )
             .map_err(PyErr::new::<PyKeyFileError, _>)?;
         self.inner = new_inner_wallet;
         Ok(Wallet {
@@ -1439,7 +1488,8 @@ except argparse.ArgumentError:
         overwrite=false,
         suppress=false,
         save_hotkey_to_env=false,
-        hotkey_password=None
+        hotkey_password=None,
+        crypto_type=1
     ))]
     #[allow(clippy::too_many_arguments)]
     fn regenerate_hotkey(
@@ -1452,6 +1502,7 @@ except argparse.ArgumentError:
         suppress: Option<bool>,
         save_hotkey_to_env: Option<bool>,
         hotkey_password: Option<String>,
+        crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         let new_inner_wallet = self
             .inner
@@ -1464,6 +1515,7 @@ except argparse.ArgumentError:
                 suppress.unwrap_or(false),
                 save_hotkey_to_env.unwrap_or(false),
                 hotkey_password,
+                crypto_type.unwrap_or(CRYPTO_SR25519),
             )
             .map_err(|e| {
                 PyErr::new::<PyKeyFileError, _>(format!("Failed to regenerate hotkey: {:?}", e))
@@ -1474,16 +1526,22 @@ except argparse.ArgumentError:
         })
     }
 
-    #[pyo3(signature = (ss58_address=None, public_key=None, overwrite=None))]
+    #[pyo3(signature = (ss58_address=None, public_key=None, overwrite=None, crypto_type=1))]
     fn regenerate_hotkeypub(
         &mut self,
         ss58_address: Option<String>,
         public_key: Option<String>,
         overwrite: Option<bool>,
+        crypto_type: Option<u8>,
     ) -> PyResult<Self> {
         let new_inner_wallet = self
             .inner
-            .regenerate_hotkeypub(ss58_address, public_key, overwrite.unwrap_or(false))
+            .regenerate_hotkeypub(
+                ss58_address,
+                public_key,
+                overwrite.unwrap_or(false),
+                crypto_type.unwrap_or(CRYPTO_SR25519),
+            )
             .map_err(PyErr::new::<PyKeyFileError, _>)?;
         self.inner = new_inner_wallet;
         Ok(Wallet {
