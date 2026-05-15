@@ -347,6 +347,20 @@ impl PyKeypair {
             .map_err(PyErr::new::<PyValueError, _>)
     }
 
+    #[pyo3(signature = (message))]
+    fn encrypt(&self, message: Vec<u8>) -> PyResult<Vec<u8>> {
+        self.inner
+            .encrypt(&message)
+            .map_err(PyErr::new::<PyValueError, _>)
+    }
+
+    #[pyo3(signature = (ciphertext))]
+    fn decrypt(&self, ciphertext: Vec<u8>) -> PyResult<Vec<u8>> {
+        self.inner
+            .decrypt(&ciphertext)
+            .map_err(PyErr::new::<PyValueError, _>)
+    }
+
     #[getter]
     fn ss58_address(&self) -> Option<String> {
         self.inner.ss58_address()
