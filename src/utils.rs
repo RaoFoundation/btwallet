@@ -1,6 +1,7 @@
 use sp_core::crypto::{AccountId32, Ss58Codec};
 use std::str;
 
+use crate::constants::CRYPTO_ED25519;
 use crate::keypair::Keypair;
 
 pub(crate) const SS58_FORMAT: u8 = 42;
@@ -35,7 +36,7 @@ pub fn is_valid_ss58_address(address: &str) -> bool {
         return false;
     }
 
-    sp_core::sr25519::Public::from_ss58check(address).is_ok()
+    AccountId32::from_ss58check(address).is_ok()
 }
 
 ///    Checks if the given public_key is a valid ed25519 key.
@@ -52,7 +53,7 @@ pub fn is_string_valid_ed25519_pubkey(public_key: &str) -> bool {
     }
 
     let pub_key_var = Some(public_key.to_string());
-    let keypair_result = Keypair::new(None, pub_key_var, None, SS58_FORMAT, None, 1);
+    let keypair_result = Keypair::new(None, pub_key_var, None, SS58_FORMAT, None, CRYPTO_ED25519);
 
     match keypair_result {
         Ok(keypair) => keypair.ss58_address().is_some(),
@@ -74,7 +75,7 @@ pub fn are_bytes_valid_ed25519_pubkey(public_key: &[u8]) -> bool {
     }
 
     let pub_key_var = Some(hex::encode(public_key));
-    let keypair_result = Keypair::new(None, pub_key_var, None, SS58_FORMAT, None, 1);
+    let keypair_result = Keypair::new(None, pub_key_var, None, SS58_FORMAT, None, CRYPTO_ED25519);
 
     match keypair_result {
         Ok(keypair) => keypair.ss58_address().is_some(),
@@ -181,5 +182,19 @@ mod tests {
     fn test_get_ss58_format_success() {
         let test_address = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
         assert!(is_valid_ss58_address(test_address));
+    }
+
+    #[test]
+    fn test_ed25519_address_is_valid_ss58() {
+        let kp = Keypair::create_from_uri("//Alice", CRYPTO_ED25519).unwrap();
+        let addr = kp.ss58_address().unwrap();
+        assert!(is_valid_ss58_address(&addr));
+    }
+
+    #[test]
+    fn test_sr25519_address_still_valid_after_accountid32_change() {
+        assert!(is_valid_ss58_address(
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+        ));
     }
 }

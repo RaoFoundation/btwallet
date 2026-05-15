@@ -188,6 +188,8 @@ impl Wallet {
         hotkey_password: Option<String>,
         overwrite: bool,
         suppress: bool,
+        coldkey_crypto_type: u8,
+        hotkey_crypto_type: u8,
     ) -> Result<Self, WalletError> {
         self.create(
             coldkey_use_password,
@@ -198,6 +200,8 @@ impl Wallet {
             hotkey_password,
             overwrite,
             suppress,
+            coldkey_crypto_type,
+            hotkey_crypto_type,
         )
     }
 
@@ -235,6 +239,8 @@ impl Wallet {
         hotkey_password: Option<String>,
         overwrite: bool,
         suppress: bool,
+        coldkey_crypto_type: u8,
+        hotkey_crypto_type: u8,
     ) -> Result<Self, WalletError> {
         if overwrite
             || (!self.coldkey_file()?.exists_on_device()?
@@ -247,6 +253,7 @@ impl Wallet {
                 suppress,
                 save_coldkey_to_env,
                 coldkey_password,
+                coldkey_crypto_type,
             )?;
         } else {
             println!("ColdKey for the wallet '{}' already exists.", self.name);
@@ -263,6 +270,7 @@ impl Wallet {
                 suppress,
                 save_hotkey_to_env,
                 hotkey_password,
+                hotkey_crypto_type,
             )?;
         } else {
             println!("HotKey for the wallet '{}' already exists.", self.name);
@@ -305,6 +313,8 @@ impl Wallet {
         hotkey_password: Option<String>,
         overwrite: bool,
         suppress: bool,
+        coldkey_crypto_type: u8,
+        hotkey_crypto_type: u8,
     ) -> Result<Self, WalletError> {
         self.create_new_coldkey(
             12,
@@ -313,6 +323,7 @@ impl Wallet {
             suppress,
             save_coldkey_to_env,
             coldkey_password,
+            coldkey_crypto_type,
         )?;
         self.create_new_hotkey(
             12,
@@ -321,6 +332,7 @@ impl Wallet {
             suppress,
             save_hotkey_to_env,
             hotkey_password,
+            hotkey_crypto_type,
         )?;
 
         Ok(self.clone())
@@ -520,8 +532,15 @@ impl Wallet {
         let ss58_address = keypair
             .ss58_address()
             .ok_or_else(|| KeyFileError::Generic("Failed to get ss58_address".to_string()))?;
-        let coldkeypub_keypair = Keypair::new(Some(ss58_address), None, None, 42, None, 1)
-            .map_err(|e| KeyFileError::Generic(e.to_string()))?;
+        let coldkeypub_keypair = Keypair::new(
+            Some(ss58_address),
+            None,
+            None,
+            42,
+            None,
+            keypair.crypto_type(),
+        )
+        .map_err(|e| KeyFileError::Generic(e.to_string()))?;
 
         self._coldkeypub = Some(coldkeypub_keypair.clone());
         self.coldkeypub_file()
@@ -582,8 +601,15 @@ impl Wallet {
         let ss58_address = keypair
             .ss58_address()
             .ok_or_else(|| KeyFileError::Generic("Failed to get ss58_address".to_string()))?;
-        let hotkeypub_keypair = Keypair::new(Some(ss58_address), None, None, 42, None, 1)
-            .map_err(|e| KeyFileError::Generic(e.to_string()))?;
+        let hotkeypub_keypair = Keypair::new(
+            Some(ss58_address),
+            None,
+            None,
+            42,
+            None,
+            keypair.crypto_type(),
+        )
+        .map_err(|e| KeyFileError::Generic(e.to_string()))?;
 
         self._hotkeypub = Some(hotkeypub_keypair.clone());
         self.hotkeypub_file()
@@ -679,6 +705,7 @@ impl Wallet {
     ///     Raises:
     ///         KeyFileError: If key creation or file operations fail.
     /// ```
+    #[allow(clippy::too_many_arguments)]
     pub fn create_coldkey_from_uri(
         &mut self,
         uri: String,
@@ -687,8 +714,9 @@ impl Wallet {
         suppress: bool,
         save_coldkey_to_env: bool,
         coldkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Wallet, KeyFileError> {
-        let keypair = Keypair::create_from_uri(uri.as_str())
+        let keypair = Keypair::create_from_uri(uri.as_str(), crypto_type)
             .map_err(|e| KeyFileError::Generic(e.to_string()))?;
 
         if !suppress {
@@ -726,6 +754,7 @@ impl Wallet {
     ///     Raises:
     ///         KeyFileError: If key creation or file operations fail.
     /// ```
+    #[allow(clippy::too_many_arguments)]
     pub fn create_hotkey_from_uri(
         &mut self,
         uri: String,
@@ -734,8 +763,9 @@ impl Wallet {
         suppress: bool,
         save_hotkey_to_env: bool,
         hotkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Wallet, KeyFileError> {
-        let keypair = Keypair::create_from_uri(uri.as_str())
+        let keypair = Keypair::create_from_uri(uri.as_str(), crypto_type)
             .map_err(|e| KeyFileError::Generic(e.to_string()))?;
 
         if !suppress {
@@ -825,6 +855,7 @@ impl Wallet {
     ///     Raises:
     ///         WalletError: If key generation or file operations fail.
     /// ```
+    #[allow(clippy::too_many_arguments)]
     pub fn new_coldkey(
         &mut self,
         n_words: usize,
@@ -833,6 +864,7 @@ impl Wallet {
         suppress: bool,
         save_coldkey_to_env: bool,
         coldkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Wallet, WalletError> {
         self.create_new_coldkey(
             n_words,
@@ -841,6 +873,7 @@ impl Wallet {
             suppress,
             save_coldkey_to_env,
             coldkey_password,
+            crypto_type,
         )
     }
 
@@ -862,6 +895,7 @@ impl Wallet {
     ///     Raises:
     ///         WalletError: If key generation or file operations fail.
     /// ```
+    #[allow(clippy::too_many_arguments)]
     fn create_new_coldkey(
         &mut self,
         n_words: usize,
@@ -870,11 +904,12 @@ impl Wallet {
         suppress: bool,
         save_coldkey_to_env: bool,
         coldkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Self, WalletError> {
         let mnemonic = Keypair::generate_mnemonic(n_words)
             .map_err(|e| WalletError::KeyGeneration(e.to_string()))?;
 
-        let keypair = Keypair::create_from_mnemonic(&mnemonic)
+        let keypair = Keypair::create_from_mnemonic(&mnemonic, crypto_type)
             .map_err(|e| WalletError::KeyGeneration(e.to_string()))?;
 
         if !suppress {
@@ -917,6 +952,7 @@ impl Wallet {
     ///     Raises:
     ///         WalletError: If key generation or file operations fail.
     /// ```
+    #[allow(clippy::too_many_arguments)]
     pub fn new_hotkey(
         &mut self,
         n_words: usize,
@@ -925,6 +961,7 @@ impl Wallet {
         suppress: bool,
         save_hotkey_to_env: bool,
         hotkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Self, WalletError> {
         self.create_new_hotkey(
             n_words,
@@ -933,6 +970,7 @@ impl Wallet {
             suppress,
             save_hotkey_to_env,
             hotkey_password,
+            crypto_type,
         )
     }
 
@@ -954,6 +992,7 @@ impl Wallet {
     ///     Raises:
     ///         WalletError: If key generation or file operations fail.
     /// ```
+    #[allow(clippy::too_many_arguments)]
     pub fn create_new_hotkey(
         &mut self,
         n_words: usize,
@@ -962,10 +1001,11 @@ impl Wallet {
         suppress: bool,
         save_hotkey_to_env: bool,
         hotkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Wallet, WalletError> {
         let mnemonic = Keypair::generate_mnemonic(n_words)
             .map_err(|e| WalletError::KeyGeneration(e.to_string()))?;
-        let keypair = Keypair::create_from_mnemonic(&mnemonic)
+        let keypair = Keypair::create_from_mnemonic(&mnemonic, crypto_type)
             .map_err(|e| WalletError::KeyGeneration(e.to_string()))?;
 
         if !suppress {
@@ -1019,19 +1059,21 @@ impl Wallet {
         suppress: bool,
         save_coldkey_to_env: bool,
         coldkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Self, WalletError> {
         let keypair = if let Some(mnemonic) = mnemonic {
-            // mnemonic
-            let keypair = Keypair::create_from_mnemonic(&mnemonic)
+            let keypair = Keypair::create_from_mnemonic(&mnemonic, crypto_type)
                 .map_err(|e| WalletError::KeyGeneration(e.to_string()))?;
             if !suppress {
                 display_mnemonic_msg(mnemonic, "coldkey");
             }
             keypair
         } else if let Some(seed) = seed {
-            // seed
-            Keypair::create_from_seed(hex::decode(seed.trim_start_matches("0x")).unwrap())
-                .map_err(|e| KeyFileError::Generic(e.to_string()))?
+            Keypair::create_from_seed(
+                hex::decode(seed.trim_start_matches("0x")).unwrap(),
+                crypto_type,
+            )
+            .map_err(|e| KeyFileError::Generic(e.to_string()))?
         } else if let Some((json_data, passphrase)) = json {
             // json_data + passphrase
             Keypair::create_from_encrypted_json(&json_data, &passphrase)
@@ -1074,6 +1116,7 @@ impl Wallet {
         ss58_address: Option<String>,
         public_key: Option<String>,
         overwrite: bool,
+        crypto_type: u8,
     ) -> Result<Self, WalletError> {
         if ss58_address.is_none() && public_key.is_none() {
             return Err(WalletError::InvalidInput(
@@ -1097,7 +1140,7 @@ impl Wallet {
             )));
         }
 
-        let keypair = Keypair::new(ss58_address, public_key, None, 42, None, 1)
+        let keypair = Keypair::new(ss58_address, public_key, None, 42, None, crypto_type)
             .map_err(|e| WalletError::KeyGeneration(e.to_string()))?;
 
         self.set_coldkeypub(keypair, false, overwrite)?;
@@ -1135,19 +1178,21 @@ impl Wallet {
         suppress: bool,
         save_hotkey_to_env: bool,
         hotkey_password: Option<String>,
+        crypto_type: u8,
     ) -> Result<Self, KeyFileError> {
         let keypair = if let Some(mnemonic) = mnemonic {
-            // mnemonic
-            let keypair = Keypair::create_from_mnemonic(&mnemonic)
+            let keypair = Keypair::create_from_mnemonic(&mnemonic, crypto_type)
                 .map_err(|e| KeyFileError::Generic(e.to_string()))?;
             if !suppress {
                 display_mnemonic_msg(mnemonic, "hotkey");
             }
             keypair
         } else if let Some(seed) = seed {
-            // seed
-            Keypair::create_from_seed(hex::decode(seed.trim_start_matches("0x")).unwrap())
-                .map_err(|e| KeyFileError::Generic(e.to_string()))?
+            Keypair::create_from_seed(
+                hex::decode(seed.trim_start_matches("0x")).unwrap(),
+                crypto_type,
+            )
+            .map_err(|e| KeyFileError::Generic(e.to_string()))?
         } else if let Some((json_data, passphrase)) = json {
             // json_data + passphrase
             Keypair::create_from_encrypted_json(&json_data, &passphrase)
@@ -1190,6 +1235,7 @@ impl Wallet {
         ss58_address: Option<String>,
         public_key: Option<String>,
         overwrite: bool,
+        crypto_type: u8,
     ) -> Result<Self, WalletError> {
         if ss58_address.is_none() && public_key.is_none() {
             return Err(WalletError::InvalidInput(
@@ -1213,7 +1259,7 @@ impl Wallet {
             )));
         }
 
-        let keypair = Keypair::new(ss58_address, public_key, None, 42, None, 1)
+        let keypair = Keypair::new(ss58_address, public_key, None, 42, None, crypto_type)
             .map_err(|e| WalletError::KeyGeneration(e.to_string()))?;
 
         self.set_hotkeypub(keypair, false, overwrite)?;
