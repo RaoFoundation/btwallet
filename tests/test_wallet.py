@@ -184,7 +184,9 @@ def test_create_ed25519_hotkey(tmp_path):
         path=str(tmp_path),
     )
     wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
-    wallet.create_new_hotkey(use_password=False, overwrite=True, suppress=True, crypto_type=0)
+    wallet.create_new_hotkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
 
     assert wallet.hotkey.crypto_type == 0
     assert wallet.hotkey.ss58_address is not None
@@ -227,7 +229,9 @@ def test_unlock_ed25519_hotkey(tmp_path):
         path=str(tmp_path),
     )
     wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
-    wallet.create_new_hotkey(use_password=False, overwrite=True, suppress=True, crypto_type=0)
+    wallet.create_new_hotkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
 
     result = wallet.unlock_hotkey()
     assert result.crypto_type == 0
@@ -242,7 +246,9 @@ def test_create_hotkey_from_uri_ed25519(tmp_path):
         path=str(tmp_path),
     )
     wallet.create_coldkey_from_uri("//cold", use_password=False, overwrite=True)
-    wallet.create_hotkey_from_uri("//hot", use_password=False, overwrite=True, crypto_type=0)
+    wallet.create_hotkey_from_uri(
+        "//hot", use_password=False, overwrite=True, crypto_type=0
+    )
 
     assert wallet.hotkey.crypto_type == 0
     assert wallet.hotkey.ss58_address is not None
@@ -257,10 +263,14 @@ def test_regenerate_ed25519_hotkey(tmp_path):
         path=str(tmp_path),
     )
     wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
-    wallet.regenerate_hotkey(mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0)
+    wallet.regenerate_hotkey(
+        mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0
+    )
     addr1 = wallet.hotkey.ss58_address
 
-    wallet.regenerate_hotkey(mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0)
+    wallet.regenerate_hotkey(
+        mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0
+    )
     addr2 = wallet.hotkey.ss58_address
 
     assert addr1 == addr2

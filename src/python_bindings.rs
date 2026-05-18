@@ -409,8 +409,8 @@ impl PyKeypair {
         }
         if crypto_type != CRYPTO_SR25519 && crypto_type != CRYPTO_ED25519 {
             return Err(PyErr::new::<PyValueError, _>(format!(
-                "Unsupported crypto type: {}. Use 0 (ED25519) or 1 (SR25519).",
-                crypto_type
+                "Unsupported crypto type: {}. Use {} (ED25519) or {} (SR25519).",
+                crypto_type, CRYPTO_ED25519, CRYPTO_SR25519
             )));
         }
         self.inner.set_crypto_type_field(crypto_type);
@@ -535,6 +535,10 @@ fn bittensor_wallet(module: Bound<'_, PyModule>) -> PyResult<()> {
     register_keypair_module(&module)?;
     register_utils_module(&module)?;
     register_wallet_module(&module)?;
+
+    // Add crypto type constants
+    module.add("CRYPTO_ED25519", CRYPTO_ED25519)?;
+    module.add("CRYPTO_SR25519", CRYPTO_SR25519)?;
 
     // Add cargo package versions
     module.add("__version__", env!("CARGO_PKG_VERSION"))?;
@@ -696,6 +700,8 @@ fn register_keyfile_module(main_module: &Bound<'_, PyModule>) -> PyResult<()> {
 fn register_keypair_module(main_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let keypair_module = PyModule::new(main_module.py(), "keypair")?;
     keypair_module.add_class::<PyKeypair>()?;
+    keypair_module.add("CRYPTO_ED25519", CRYPTO_ED25519)?;
+    keypair_module.add("CRYPTO_SR25519", CRYPTO_SR25519)?;
     main_module.add_submodule(&keypair_module)
 }
 
