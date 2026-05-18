@@ -128,9 +128,7 @@ impl Keypair {
     pub(crate) fn set_crypto_type_field(&mut self, crypto_type: u8) {
         self.crypto_type = crypto_type;
     }
-}
 
-impl Keypair {
     /// Creates a new Keypair instance.
     ///
     /// ```text
