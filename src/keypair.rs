@@ -3,8 +3,10 @@ use bip39::Mnemonic;
 use schnorrkel::{PublicKey, SecretKey};
 use scrypt::{scrypt, Params as ScryptParams};
 use serde::{Deserialize, Serialize};
+use sodiumoxide::crypto::sealedbox;
 use sodiumoxide::crypto::secretbox;
 use sodiumoxide::crypto::secretbox::{Key, Nonce};
+use sodiumoxide::crypto::sign::ed25519 as sign_ed25519;
 use sp_core::crypto::{AccountId32, Ss58Codec};
 use sp_core::{ed25519, sr25519, ByteArray, Pair};
 use std::fmt;
@@ -524,6 +526,71 @@ impl Keypair {
         verify_signature(ct, &public_key_bytes, &wrapped_data, &signature)
     }
 
+    /// Encrypts a message using the recipient's ED25519 public key (sealed box).
+    ///
+    /// ```text
+    ///     Arguments:
+    ///         message (&[u8]): The plaintext message to encrypt.
+    ///     Returns:
+    ///         ciphertext (Vec<u8>): The encrypted message (48 bytes longer than the input).
+    /// ```
+    pub fn encrypt(&self, message: &[u8]) -> Result<Vec<u8>, String> {
+        if self.crypto_type() != CRYPTO_ED25519 {
+            return Err("Encrypt/decrypt is only supported for ED25519 keypairs.".to_string());
+        }
+        let x25519_pk = self.ed25519_to_x25519_pk()?;
+        Ok(sealedbox::seal(message, &x25519_pk))
+    }
+
+    /// Decrypts a sealed box ciphertext using the keypair's ED25519 private key.
+    ///
+    /// ```text
+    ///     Arguments:
+    ///         ciphertext (&[u8]): The encrypted message to decrypt.
+    ///     Returns:
+    ///         plaintext (Vec<u8>): The decrypted message.
+    /// ```
+    pub fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, String> {
+        if self.crypto_type() != CRYPTO_ED25519 {
+            return Err("Encrypt/decrypt is only supported for ED25519 keypairs.".to_string());
+        }
+        let pair = self
+            .pair
+            .as_ref()
+            .ok_or_else(|| "Decryption requires a keypair with a private key.".to_string())?;
+        let (x25519_pk, x25519_sk) = Self::ed25519_x25519_keypair_from_pair(pair)?;
+        sealedbox::open(ciphertext, &x25519_pk, &x25519_sk)
+            .map_err(|_| "Decryption failed: invalid ciphertext or wrong key.".to_string())
+    }
+
+    fn ed25519_to_x25519_pk(&self) -> Result<sodiumoxide::crypto::box_::PublicKey, String> {
+        let pubkey_bytes = self.public_key_bytes()?;
+        let ed25519_pk = sign_ed25519::PublicKey::from_slice(&pubkey_bytes)
+            .ok_or_else(|| "No public key available for encryption.".to_string())?;
+        sign_ed25519::to_curve25519_pk(&ed25519_pk)
+            .map_err(|_| "Failed to convert ED25519 public key to X25519.".to_string())
+    }
+
+    fn ed25519_x25519_keypair_from_pair(
+        pair: &PairInner,
+    ) -> Result<
+        (
+            sodiumoxide::crypto::box_::PublicKey,
+            sodiumoxide::crypto::box_::SecretKey,
+        ),
+        String,
+    > {
+        let seed_bytes = pair.to_raw_vec();
+        let seed = sign_ed25519::Seed::from_slice(&seed_bytes)
+            .ok_or_else(|| "Failed to derive X25519 keypair for decryption.".to_string())?;
+        let (pk, sk) = sign_ed25519::keypair_from_seed(&seed);
+        let x25519_pk = sign_ed25519::to_curve25519_pk(&pk)
+            .map_err(|_| "Failed to derive X25519 keypair for decryption.".to_string())?;
+        let x25519_sk = sign_ed25519::to_curve25519_sk(&sk)
+            .map_err(|_| "Failed to derive X25519 keypair for decryption.".to_string())?;
+        Ok((x25519_pk, x25519_sk))
+    }
+
     fn public_key_bytes(&self) -> Result<[u8; 32], String> {
         if let Some(pair) = &self.pair {
             Ok(pair.public_bytes())
@@ -886,5 +953,119 @@ mod tests {
     fn test_default_crypto_type_is_sr25519() {
         let kp = Keypair::default();
         assert_eq!(kp.crypto_type(), CRYPTO_SR25519);
+    }
+
+    // --- Encrypt/Decrypt tests ---
+
+    #[test]
+    fn test_sp_core_and_sodiumoxide_same_pubkey_from_seed() {
+        let seed = [42u8; 32];
+        let sp_pair = ed25519::Pair::from_seed_slice(&seed).unwrap();
+        let sp_pubkey = sp_pair.public().0;
+
+        let sodium_seed = sign_ed25519::Seed::from_slice(&seed).unwrap();
+        let (sodium_pk, _) = sign_ed25519::keypair_from_seed(&sodium_seed);
+
+        assert_eq!(sp_pubkey, sodium_pk.0);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_roundtrip() {
+        let kp = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let message = b"secret message for testing";
+        let ciphertext = kp.encrypt(message).unwrap();
+        let plaintext = kp.decrypt(&ciphertext).unwrap();
+        assert_eq!(plaintext, message);
+    }
+
+    #[test]
+    fn test_encrypt_produces_correct_length() {
+        let kp = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let message = b"hello world";
+        let ciphertext = kp.encrypt(message).unwrap();
+        assert_eq!(ciphertext.len(), message.len() + 48);
+    }
+
+    #[test]
+    fn test_encrypt_is_nondeterministic() {
+        let kp = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let message = b"same message";
+        let ct1 = kp.encrypt(message).unwrap();
+        let ct2 = kp.encrypt(message).unwrap();
+        assert_ne!(ct1, ct2);
+    }
+
+    #[test]
+    fn test_encrypt_works_on_pubonly_keypair() {
+        let full = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let addr = full.ss58_address().unwrap();
+        let pub_only = Keypair::new(Some(addr), None, None, 42, None, CRYPTO_ED25519).unwrap();
+        let ciphertext = pub_only.encrypt(b"hello").unwrap();
+        assert_eq!(ciphertext.len(), 5 + 48);
+    }
+
+    #[test]
+    fn test_decrypt_fails_on_pubonly_keypair() {
+        let full = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let ciphertext = full.encrypt(b"hello").unwrap();
+        let addr = full.ss58_address().unwrap();
+        let pub_only = Keypair::new(Some(addr), None, None, 42, None, CRYPTO_ED25519).unwrap();
+        let result = pub_only.decrypt(&ciphertext);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("private key"));
+    }
+
+    #[test]
+    fn test_encrypt_fails_on_sr25519() {
+        let kp = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_SR25519).unwrap();
+        let result = kp.encrypt(b"hello");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("ED25519"));
+    }
+
+    #[test]
+    fn test_decrypt_fails_on_sr25519() {
+        let kp = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_SR25519).unwrap();
+        let result = kp.decrypt(b"fake ciphertext that is long enough for sealbytes padding!!");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("ED25519"));
+    }
+
+    #[test]
+    fn test_decrypt_fails_with_wrong_key() {
+        let alice = Keypair::create_from_uri("//Alice", CRYPTO_ED25519).unwrap();
+        let bob = Keypair::create_from_uri("//Bob", CRYPTO_ED25519).unwrap();
+        let ciphertext = alice.encrypt(b"for alice only").unwrap();
+        let result = bob.decrypt(&ciphertext);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_decrypt_fails_with_tampered_ciphertext() {
+        let kp = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let mut ciphertext = kp.encrypt(b"hello").unwrap();
+        ciphertext[10] ^= 0xFF;
+        let result = kp.decrypt(&ciphertext);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_encrypt_empty_message() {
+        let kp = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let ciphertext = kp.encrypt(b"").unwrap();
+        assert_eq!(ciphertext.len(), 48);
+        let plaintext = kp.decrypt(&ciphertext).unwrap();
+        assert_eq!(plaintext, b"");
+    }
+
+    #[test]
+    fn test_pubonly_can_encrypt_fullkey_can_decrypt() {
+        let full = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let addr = full.ss58_address().unwrap();
+        let pub_only = Keypair::new(Some(addr), None, None, 42, None, CRYPTO_ED25519).unwrap();
+
+        let ciphertext = pub_only.encrypt(b"encrypted by pub-only").unwrap();
+        let plaintext = full.decrypt(&ciphertext).unwrap();
+        assert_eq!(plaintext, b"encrypted by pub-only");
     }
 }

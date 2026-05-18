@@ -558,6 +558,67 @@ def test_legacy_keyfile_without_crypto_type_defaults_sr25519():
     assert kp.crypto_type == CRYPTO_SR25519
     assert kp.ss58_address == "5HDvhV6WDCjCKyrXqGQSDYqQAzkzabNhctmiDYEqgBC66BsX"
 
+    
+# --- Encrypt/Decrypt tests ---
+
+
+def test_ed25519_encrypt_decrypt_roundtrip():
+    """Test ED25519 encrypt then decrypt returns original message."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=CRYPTO_ED25519)
+    message = b"secret message for testing"
+    ciphertext = kp.encrypt(message)
+    plaintext = kp.decrypt(ciphertext)
+    assert plaintext == message
+
+
+def test_ed25519_encrypt_sr25519_raises():
+    """Test that encrypt raises ValueError on SR25519 keypair."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=CRYPTO_SR25519)
+    with pytest.raises(ValueError, match="ED25519"):
+        kp.encrypt(b"hello")
+
+
+def test_ed25519_decrypt_pubonly_raises():
+    """Test that decrypt raises on a pub-only keypair (no private key)."""
+    full = Keypair.create_from_uri("//Alice", crypto_type=CRYPTO_ED25519)
+    ciphertext = full.encrypt(b"hello")
+    pub_only = Keypair(ss58_address=full.ss58_address, crypto_type=CRYPTO_ED25519)
+    with pytest.raises(ValueError, match="private key"):
+        pub_only.decrypt(ciphertext)
+
+
+def test_ed25519_decrypt_wrong_key_raises():
+    """Test that decrypt with wrong key raises an error."""
+    alice = Keypair.create_from_uri("//Alice", crypto_type=CRYPTO_ED25519)
+    bob = Keypair.create_from_uri("//Bob", crypto_type=CRYPTO_ED25519)
+    ciphertext = alice.encrypt(b"for alice only")
+    with pytest.raises(ValueError):
+        bob.decrypt(ciphertext)
+
+
+def test_ed25519_encrypt_produces_different_ciphertexts():
+    """Test that encrypting the same message twice produces different ciphertexts."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=CRYPTO_ED25519)
+    ct1 = kp.encrypt(b"same message")
+    ct2 = kp.encrypt(b"same message")
+    assert ct1 != ct2
+
+
+def test_ed25519_ciphertext_length():
+    """Test that ciphertext is exactly 48 bytes longer than the plaintext."""
+    kp = Keypair.create_from_uri("//Alice", crypto_type=CRYPTO_ED25519)
+    message = b"hello world"
+    ciphertext = kp.encrypt(message)
+    assert len(ciphertext) == len(message) + 48
+
+
+def test_encrypt_for_static_method():
+    """Test that encrypt_for encrypts for a given address and the owner can decrypt."""
+    bob = Keypair.create_from_uri("//Bob", crypto_type=CRYPTO_ED25519)
+    ciphertext = Keypair.encrypt_for(bob.ss58_address, b"hello bob")
+    plaintext = bob.decrypt(ciphertext)
+    assert plaintext == b"hello bob"
+
 
 # --- Crypto type constants tests ---
 
