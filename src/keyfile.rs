@@ -788,7 +788,7 @@ impl Keyfile {
             return Ok(false);
         }
 
-        let update_keyfile = false;
+        let mut update_keyfile = false;
         if !no_prompt {
             // read keyfile
             let keyfile_data = self._read_keyfile_data_from_file()?;
@@ -800,7 +800,8 @@ impl Keyfile {
                 utils::print("You may update the keyfile to improve security...\n".to_string());
 
                 // ask user for the confirmation for updating
-                if update_keyfile == confirm_prompt("Update keyfile?") {
+                update_keyfile = confirm_prompt("Update keyfile?");
+                if update_keyfile {
                     let mut stored_mnemonic = false;
 
                     // check mnemonic if saved
