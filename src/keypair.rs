@@ -358,6 +358,19 @@ impl Keypair {
             data
         }
 
+        /// Builds an SR25519 (secret, public) byte tuple. The secret is converted
+        /// from raw Ed25519 form; the public key is already SR25519 (Ristretto)
+        /// and is passed through as-is.
+        ///
+        /// ```text
+        ///     Arguments:
+        ///         secret (&[u8]): The Ed25519 private key bytes to convert to SR25519.
+        ///         pubkey (&[u8]): The SR25519 (Ristretto-compressed) public key bytes.
+        ///     Returns:
+        ///         pair ([u8; 64], [u8; 32]): A tuple of the 64-byte secret and 32-byte public key.
+        ///     Panics:
+        ///         If either input cannot be parsed by ``schnorrkel``.
+        /// ```
         pub fn pair_from_ed25519_secret_key(secret: &[u8], pubkey: &[u8]) -> ([u8; 64], [u8; 32]) {
             match (
                 SecretKey::from_ed25519_bytes(secret),
@@ -629,6 +642,7 @@ impl Keypair {
         self.ss58_format
     }
 
+    /// Returns the seed bytes used to derive this keypair, if known.
     pub fn seed_hex(&self) -> Option<Vec<u8>> {
         self.seed_hex.clone()
     }

@@ -121,6 +121,17 @@ impl Wallet {
         unimplemented!()
     }
 
+    /// Registers the wallet's `--wallet.name`, `--wallet.hotkey`, and `--wallet.path`
+    /// arguments on the given clap command, seeded from the `BT_WALLET_NAME`,
+    /// `BT_WALLET_HOTKEY`, and `BT_WALLET_PATH` environment variables when set.
+    ///
+    /// ```text
+    ///     Arguments:
+    ///         parser (clap::Command): The clap command to extend.
+    ///         _prefix (Option<&str>): Reserved for future argument-prefix support (see inline TODO).
+    ///     Returns:
+    ///         parser (clap::Command): The same command with the wallet arguments added.
+    /// ```
     // TODO: What are the prefixes for ?
     pub fn add_args(parser: clap::Command, _prefix: Option<&str>) -> clap::Command {
         let default_name =
