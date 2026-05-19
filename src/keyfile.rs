@@ -14,6 +14,7 @@ use passwords::analyzer;
 use passwords::scorer;
 use serde_json::json;
 
+use crate::constants::CRYPTO_SR25519;
 use crate::errors::KeyFileError;
 use crate::keypair::Keypair;
 use crate::utils;
@@ -64,6 +65,8 @@ pub fn serialized_keypair_to_keyfile_data(keypair: &Keypair) -> Result<Vec<u8>, 
         data.insert("ss58Address", json!(ss58_address.to_string()));
     }
 
+    data.insert("cryptoType", json!(keypair.crypto_type()));
+
     // Serialize the data into JSON string and return it as bytes
     let json_data = serde_json::to_string(&data)
         .map_err(|e| KeyFileError::SerializationError(format!("Serialization error: {}", e)))?;
@@ -81,38 +84,48 @@ pub fn serialized_keypair_to_keyfile_data(keypair: &Keypair) -> Result<Vec<u8>, 
 ///         KeyFileError: Raised if the passed PyBytes cannot construct a keypair object.
 /// ```
 pub fn deserialize_keypair_from_keyfile_data(keyfile_data: &[u8]) -> Result<Keypair, KeyFileError> {
-    // Decode the keyfile data from bytes to a string
     let decoded = from_utf8(keyfile_data).map_err(|_| {
         KeyFileError::DeserializationError("Failed to decode keyfile data.".to_string())
     })?;
 
-    // Parse the JSON string into a HashMap
-    let keyfile_dict: HashMap<String, Option<String>> =
-        serde_json::from_str(decoded).map_err(|_| {
-            KeyFileError::DeserializationError("Failed to parse keyfile data.".to_string())
-        })?;
+    let keyfile_dict: serde_json::Value = serde_json::from_str(decoded).map_err(|_| {
+        KeyFileError::DeserializationError("Failed to parse keyfile data.".to_string())
+    })?;
 
-    // Extract data from the keyfile
-    let secret_seed = keyfile_dict.get("secretSeed").and_then(|v| v.clone());
-    let secret_phrase = keyfile_dict.get("secretPhrase").and_then(|v| v.clone());
-    let private_key = keyfile_dict.get("privateKey").and_then(|v| v.clone());
-    let ss58_address = keyfile_dict.get("ss58Address").and_then(|v| v.clone());
+    let crypto_type = keyfile_dict
+        .get("cryptoType")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u8)
+        .unwrap_or(CRYPTO_SR25519);
 
-    // Create the `Keypair` based on the available data
+    let secret_phrase = keyfile_dict
+        .get("secretPhrase")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let secret_seed = keyfile_dict
+        .get("secretSeed")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let private_key = keyfile_dict
+        .get("privateKey")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let ss58_address = keyfile_dict
+        .get("ss58Address")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+
     if let Some(secret_phrase) = secret_phrase {
-        Keypair::create_from_mnemonic(secret_phrase.as_str()).map_err(KeyFileError::Generic)
+        Keypair::create_from_mnemonic(&secret_phrase, crypto_type).map_err(KeyFileError::Generic)
     } else if let Some(seed) = secret_seed {
-        // Remove 0x prefix if present
         let seed = seed.trim_start_matches("0x");
         let seed_bytes = hex::decode(seed).map_err(|e| KeyFileError::Generic(e.to_string()))?;
-        Keypair::create_from_seed(seed_bytes).map_err(KeyFileError::Generic)
+        Keypair::create_from_seed(seed_bytes, crypto_type).map_err(KeyFileError::Generic)
     } else if let Some(private_key) = private_key {
-        // Remove 0x prefix if present
         let key = private_key.trim_start_matches("0x");
-        Keypair::create_from_private_key(key).map_err(KeyFileError::Generic)
+        Keypair::create_from_private_key(key, crypto_type).map_err(KeyFileError::Generic)
     } else if let Some(ss58) = ss58_address {
-        Keypair::new(Some(ss58.clone()), None, None, 42, None, 1)
-            .map_err(|e| KeyFileError::Generic(e.to_string()))
+        Keypair::new(Some(ss58), None, None, 42, None, crypto_type).map_err(KeyFileError::Generic)
     } else {
         Err(KeyFileError::Generic(
             "Keypair could not be created from keyfile data.".to_string(),
@@ -1086,5 +1099,92 @@ impl Keyfile {
             utils::print(message);
             Ok(false)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::{CRYPTO_ED25519, CRYPTO_SR25519};
+    use crate::keypair::Keypair;
+
+    fn test_mnemonic() -> String {
+        "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+            .to_string()
+    }
+
+    #[test]
+    fn test_ed25519_keyfile_roundtrip() {
+        let original = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let data = serialized_keypair_to_keyfile_data(&original).unwrap();
+        let restored = deserialize_keypair_from_keyfile_data(&data).unwrap();
+
+        assert_eq!(restored.crypto_type(), CRYPTO_ED25519);
+        assert_eq!(restored.ss58_address(), original.ss58_address());
+
+        let sig = restored.sign(b"test".to_vec()).unwrap();
+        assert!(restored.verify(b"test".to_vec(), sig).unwrap());
+    }
+
+    #[test]
+    fn test_sr25519_keyfile_roundtrip() {
+        let original = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_SR25519).unwrap();
+        let data = serialized_keypair_to_keyfile_data(&original).unwrap();
+        let restored = deserialize_keypair_from_keyfile_data(&data).unwrap();
+
+        assert_eq!(restored.crypto_type(), CRYPTO_SR25519);
+        assert_eq!(restored.ss58_address(), original.ss58_address());
+
+        let sig = restored.sign(b"test".to_vec()).unwrap();
+        assert!(restored.verify(b"test".to_vec(), sig).unwrap());
+    }
+
+    #[test]
+    fn test_legacy_keyfile_without_crypto_type_defaults_sr25519() {
+        let json = r#"{"secretPhrase":"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about","ss58Address":"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"}"#;
+        let kp = deserialize_keypair_from_keyfile_data(json.as_bytes()).unwrap();
+        assert_eq!(kp.crypto_type(), CRYPTO_SR25519);
+    }
+
+    #[test]
+    fn test_keyfile_json_contains_crypto_type() {
+        let ed = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let ed_data = serialized_keypair_to_keyfile_data(&ed).unwrap();
+        let ed_str = std::str::from_utf8(&ed_data).unwrap();
+        assert!(ed_str.contains("\"cryptoType\":0"));
+
+        let sr = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_SR25519).unwrap();
+        let sr_data = serialized_keypair_to_keyfile_data(&sr).unwrap();
+        let sr_str = std::str::from_utf8(&sr_data).unwrap();
+        assert!(sr_str.contains("\"cryptoType\":1"));
+    }
+
+    #[test]
+    fn test_ed25519_keyfile_roundtrip_via_seed() {
+        let seed = [0xffu8; 32];
+        let original = Keypair::create_from_seed(seed.to_vec(), CRYPTO_ED25519).unwrap();
+        let data = serialized_keypair_to_keyfile_data(&original).unwrap();
+        let restored = deserialize_keypair_from_keyfile_data(&data).unwrap();
+
+        assert_eq!(restored.crypto_type(), CRYPTO_ED25519);
+        assert_eq!(restored.ss58_address(), original.ss58_address());
+    }
+
+    #[test]
+    fn test_keyfile_explicit_crypto_type_in_json() {
+        let json = format!(r#"{{"secretPhrase":"{}","cryptoType":0}}"#, test_mnemonic());
+        let kp = deserialize_keypair_from_keyfile_data(json.as_bytes()).unwrap();
+        assert_eq!(kp.crypto_type(), CRYPTO_ED25519);
+        assert!(kp.ss58_address().is_some());
+    }
+
+    #[test]
+    fn test_ed25519_keyfile_cross_verification_after_roundtrip() {
+        let original = Keypair::create_from_mnemonic(&test_mnemonic(), CRYPTO_ED25519).unwrap();
+        let data = serialized_keypair_to_keyfile_data(&original).unwrap();
+        let restored = deserialize_keypair_from_keyfile_data(&data).unwrap();
+
+        let sig = restored.sign(b"cross-check".to_vec()).unwrap();
+        assert!(original.verify(b"cross-check".to_vec(), sig).unwrap());
     }
 }

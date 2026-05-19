@@ -36,7 +36,7 @@ base64 = "0.22.1"
 scrypt = "0.11.0"
 schnorrkel = "0.11.4"
 shellexpand = "3.1.0"
-rpassword = "7.5.2"
+rpassword = ">=7.3, <7.5"
 clap = "4.5.21"
 thiserror = "2.0.3"
 pyo3 = { version = "0.26.0", features = ["generate-import-lib"], optional = true }

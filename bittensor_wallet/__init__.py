@@ -12,17 +12,23 @@ from bittensor_wallet.bittensor_wallet import (
     __version__,
 )
 
-# classes
-Config = Config
-Keyfile = Keyfile
-Keypair = Keypair
-Wallet = Wallet
+from bittensor_wallet.keypair import (
+    CRYPTO_ED25519,
+    CRYPTO_SR25519,
+)
 
-# modules
-config = config
-errors = errors
-keyfile = keyfile
-keypair = keypair
-utils = utils
-wallet = wallet
-__version__ == __version__
+__all__ = [
+    "Config",
+    "Keyfile",
+    "Keypair",
+    "Wallet",
+    "CRYPTO_ED25519",
+    "CRYPTO_SR25519",
+    "config",
+    "errors",
+    "keyfile",
+    "keypair",
+    "utils",
+    "wallet",
+    "__version__",
+]
