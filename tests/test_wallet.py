@@ -171,3 +171,107 @@ def test_regenerate_hotkeypub(tmp_path):
     assert ss58_coldkey == ss58_coldkeypub
     assert ss58_hotkey == ss58_hotkeypub
     assert ss58_hotkeypub == new_ss58_hotkeypub
+
+
+# --- ED25519 Wallet tests ---
+
+
+def test_create_ed25519_hotkey(tmp_path):
+    """Test creating an ED25519 hotkey through Wallet API."""
+    wallet = Wallet(
+        name="test_ed25519",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.create_new_hotkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
+
+    assert wallet.hotkey.crypto_type == 0
+    assert wallet.hotkey.ss58_address is not None
+
+
+def test_create_ed25519_coldkey(tmp_path):
+    """Test creating an ED25519 coldkey through Wallet API."""
+    wallet = Wallet(
+        name="test_ed25519_cold",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
+    wallet.create_new_hotkey(use_password=False, overwrite=True, suppress=True)
+
+    assert wallet.coldkey.crypto_type == 0
+    assert wallet.coldkey.ss58_address is not None
+
+
+def test_default_hotkey_is_sr25519(tmp_path):
+    """Test that default hotkey creation uses SR25519."""
+    wallet = Wallet(
+        name="test_default_sr",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.create_new_hotkey(use_password=False, overwrite=True, suppress=True)
+
+    assert wallet.hotkey.crypto_type == 1
+
+
+def test_unlock_ed25519_hotkey(tmp_path):
+    """Test unlocking an ED25519 hotkey preserves crypto_type."""
+    wallet = Wallet(
+        name="test_unlock_ed",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.create_new_hotkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
+
+    result = wallet.unlock_hotkey()
+    assert result.crypto_type == 0
+    assert result.ss58_address == wallet.hotkey.ss58_address
+
+
+def test_create_hotkey_from_uri_ed25519(tmp_path):
+    """Test creating an ED25519 hotkey from URI."""
+    wallet = Wallet(
+        name="test_uri_ed",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_coldkey_from_uri("//cold", use_password=False, overwrite=True)
+    wallet.create_hotkey_from_uri(
+        "//hot", use_password=False, overwrite=True, crypto_type=0
+    )
+
+    assert wallet.hotkey.crypto_type == 0
+    assert wallet.hotkey.ss58_address is not None
+
+
+def test_regenerate_ed25519_hotkey(tmp_path):
+    """Test that regenerating an ED25519 hotkey from same mnemonic produces same address."""
+    mnemonic = "old leopard transfer rib spatial phone calm indicate online fire caution review"
+    wallet = Wallet(
+        name="test_regen_ed",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.regenerate_hotkey(
+        mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0
+    )
+    addr1 = wallet.hotkey.ss58_address
+
+    wallet.regenerate_hotkey(
+        mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0
+    )
+    addr2 = wallet.hotkey.ss58_address
+
+    assert addr1 == addr2
+    assert wallet.hotkey.crypto_type == 0

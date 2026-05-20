@@ -12,12 +12,14 @@ pub struct WalletConfig {
 impl WalletConfig {
     /// Creates a new WalletConfig instance.
     ///
+    /// ```text
     ///     Arguments:
     ///         name (Option<String>): Optional wallet name. Defaults to "default" if not provided.
     ///         hotkey (Option<String>): Optional hotkey name. Defaults to "default" if not provided.
     ///         path (Option<String>): Optional wallet path. Defaults to "~/.bittensor/wallets/" if not provided.
     ///     Returns:
     ///         wallet_config (WalletConfig): A new WalletConfig instance.
+    /// ```
     pub fn new(name: Option<String>, hotkey: Option<String>, path: Option<String>) -> Self {
         WalletConfig {
             name: name.unwrap_or_else(|| BT_WALLET_NAME.to_string()),
@@ -45,12 +47,14 @@ impl Display for Config {
 impl Config {
     /// Creates a new Config instance.
     ///
+    /// ```text
     ///     Arguments:
     ///         name (Option<String>): Optional wallet name. Defaults to "default" if not provided.
     ///         hotkey (Option<String>): Optional hotkey name. Defaults to "default" if not provided.
     ///         path (Option<String>): Optional wallet path. Defaults to "~/.bittensor/wallets/" if not provided.
     ///     Returns:
     ///         config (Config): A new Config instance.
+    /// ```
     pub fn new(name: Option<String>, hotkey: Option<String>, path: Option<String>) -> Config {
         Config {
             wallet: WalletConfig::new(name, hotkey, path),

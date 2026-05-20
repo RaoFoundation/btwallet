@@ -196,6 +196,7 @@ def test_keyfile_encrypt_and_decrypt(tmp_path):
     json_data = json.loads(kf.data)
     assert set(json_data.keys()) == {
         "accountId",
+        "cryptoType",
         "privateKey",
         "secretSeed",
         "publicKey",

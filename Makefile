@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check clippy clippy-all test package check
+.PHONY: fmt fmt-check clippy clippy-all test package ruff-check ruff-format check
 
 # Auto-format code (nightly rustfmt)
 fmt:
@@ -24,5 +24,13 @@ test:
 package:
 	cargo package --no-verify --allow-dirty
 
+# check python stuff w/o formating
+ruff-check:
+	ruff check .
+
+# check python stuff with formating
+ruff-format:
+	ruff format .
+
 # Run all checks sequentially
-check: fmt-check clippy clippy-all test package
+check: fmt-check clippy clippy-all test ruff-check package
