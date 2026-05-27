@@ -1,6 +1,28 @@
 # Changelog
 
-## 4.0.1 /2025-1028
+## 4.1.0 /2026-05-27
+
+## What's Changed
+* Release/4.0.1 by @basfroman in https://github.com/latent-to/btwallet/pull/168
+* Allows running e2e tests by community PRs. by @thewhaleking in https://github.com/latent-to/btwallet/pull/169
+* updated docstrings by @chideraao in https://github.com/latent-to/btwallet/pull/170
+* Enable publishing btwallet as a standalone Rust crate on crates.io by @basfroman in https://github.com/latent-to/btwallet/pull/176
+* Fix clippy warnings and simplify check-rust workflow by @basfroman in https://github.com/latent-to/btwallet/pull/177
+* Add info about signed commits by @thewhaleking in https://github.com/latent-to/btwallet/pull/184
+* Maintenance by @thewhaleking in https://github.com/latent-to/btwallet/pull/194
+* Add `ED25519` support with `encrypt`/`decrypt` by @basfroman in https://github.com/latent-to/btwallet/pull/196
+* Add ED25519 crypto type support by @basfroman in https://github.com/latent-to/btwallet/pull/195
+* Complete pub-fn docstring coverage on keypair, utils, wallet by @omipheo in https://github.com/latent-to/btwallet/pull/193
+* fix(keyfile): correctly honor user confirmation in check_and_update_encryption by @boskodev790 in https://github.com/latent-to/btwallet/pull/188
+
+## New Contributors
+* @chideraao made their first contribution in https://github.com/latent-to/btwallet/pull/170
+* @omipheo made their first contribution in https://github.com/latent-to/btwallet/pull/193
+* @boskodev790 made their first contribution in https://github.com/latent-to/btwallet/pull/188
+
+**Full Changelog**: https://github.com/latent-to/btwallet/compare/v4.0.1...v4.1.0
+
+## 4.0.1 /2025-10-28
 
 ## What's Changed
 * Support Python 3.14 by @thewhaleking in https://github.com/opentensor/btwallet/pull/166
