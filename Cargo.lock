@@ -473,7 +473,7 @@ dependencies = [
 
 [[package]]
 name = "btwallet"
-version = "4.0.1"
+version = "4.1.0"
 dependencies = [
  "ansible-vault",
  "base64 0.22.1",
