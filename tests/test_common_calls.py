@@ -196,6 +196,7 @@ def test_keyfile_encrypt_and_decrypt(tmp_path):
     json_data = json.loads(kf.data)
     assert set(json_data.keys()) == {
         "accountId",
+        "cryptoType",
         "privateKey",
         "secretSeed",
         "publicKey",
@@ -261,18 +262,18 @@ def test_config_parsing():
     """Config parsing test."""
     parser = argparse.ArgumentParser(description="My parser")
 
-    bt.wallet.add_args(parser)
-    bt.subtensor.add_args(parser)
-    bt.axon.add_args(parser)
+    bt.Wallet.add_args(parser)
+    bt.Subtensor.add_args(parser)
+    bt.Axon.add_args(parser)
     bt.logging.add_args(parser)
 
-    config = bt.config(parser)
+    config = bt.Config(parser)
 
     config.wallet.name = "new_wallet_name"
     config.wallet.hotkey = "new_hotkey"
     config.wallet.path = "/some/not_default/path"
 
-    wallet = bt.wallet(config=config)
+    wallet = bt.Wallet(config=config)
 
     assert wallet.name == config.wallet.name
     assert wallet.hotkey_str == config.wallet.hotkey

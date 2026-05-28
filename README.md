@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/bittensor-wallet.svg)](https://badge.fury.io/py/bittensor-wallet)
 
+[![Crates.io](https://img.shields.io/crates/v/btwallet.svg)](https://crates.io/crates/btwallet)
+[![Documentation](https://docs.rs/btwallet/badge.svg)](https://docs.rs/btwallet)
 ---
 
 ## Internet-scale Neural Networks <!-- omit in toc -->
@@ -17,6 +19,28 @@
 ## Bittensor Wallet
 
 The Bittensor Wallet SDK is a Python interface for a powerful Rust-based Bittensor wallet functionality. You do not need to know Rust to use this Wallet SDK. However, if you want to contribute to the Rust components of this Wallet SDK, the Rust source is located in the [src](./src) directory. You can look at the development history by inspecting the Changelog.md.
+
+### Contributing
+#### Signed Commits
+
+All commits in pull requests must be signed. We require signed commits to verify the authenticity of contributions and ensure code integrity.
+
+To sign your commits, you must have GPG signing configured in Git:
+
+```bash
+git commit -S -m "your commit message"
+```
+
+Or configure Git to sign all commits automatically:
+
+```bash
+git config --global commit.gpgsign true
+```
+
+For instructions on setting up GPG key signing, see [GitHub's documentation on signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
+
+> **Note:** Pull requests containing unsigned commits will not be merged.
+
 
 ## Documentation
 
@@ -157,3 +181,7 @@ my_wallet.create()
 The above will create a wallet with "my_wallet_name". 
 
 ---
+
+## Rust crate
+
+This project is also published as a pure Rust crate [`btwallet`](https://crates.io/crates/btwallet) on crates.io for use without Python. See the [crate documentation](https://docs.rs/btwallet) for details.
