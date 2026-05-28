@@ -1,11 +1,12 @@
-mod config;
+pub mod config;
 mod constants;
-mod errors;
-mod keyfile;
-mod keypair;
+pub mod errors;
+pub mod keyfile;
+pub mod keypair;
+#[cfg(feature = "python-bindings")]
 mod python_bindings;
-mod utils;
-mod wallet;
+pub mod utils;
+pub mod wallet;
 
 pub use config::Config;
 pub use errors::{ConfigurationError, KeyFileError, PasswordError};

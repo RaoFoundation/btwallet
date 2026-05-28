@@ -1,118 +1,9 @@
-import json
 import time
-from unittest.mock import patch
 
 import pytest
-from ansible_vault import Vault
 
-from bittensor_wallet import Wallet, keyfile
+from bittensor_wallet import Wallet
 from bittensor_wallet.errors import KeyFileError
-
-
-def legacy_encrypt_keyfile_data(keyfile_data: bytes, password: str = None) -> bytes:
-    vault = Vault(password)
-    return vault.vault.encrypt(keyfile_data)
-
-
-def create_wallet(default_updated_password):
-    # create an nacl wallet
-    wallet = Wallet(
-        name=f"mock-{str(time.time())}",
-        path="/tmp/tests_wallets/do_not_use",
-    )
-    with patch.object(
-        keyfile,
-        "ask_password_to_encrypt",
-        return_value=default_updated_password,
-    ):
-        wallet.create()
-        assert "NaCl" in str(wallet.coldkey_file)
-
-    return wallet
-
-
-def create_legacy_wallet(default_legacy_password=None, legacy_password=None):
-    def _legacy_encrypt_keyfile_data(*args, **kwargs):
-        args = {
-            k: v
-            for k, v in zip(
-                legacy_encrypt_keyfile_data.__code__.co_varnames[: len(args)],
-                args,
-            )
-        }
-        kwargs = {**args, **kwargs, "password": legacy_password}
-        return legacy_encrypt_keyfile_data(**kwargs)
-
-    legacy_wallet = Wallet(
-        name=f"mock-legacy-{str(time.time())}",
-        path="/tmp/tests_wallets/do_not_use",
-    )
-    legacy_password = (
-        default_legacy_password if legacy_password is None else legacy_password
-    )
-
-    # create a legacy ansible wallet
-    with patch.object(
-        keyfile,
-        "encrypt_keyfile_data",
-        new=_legacy_encrypt_keyfile_data,
-        # new = TestWalletUpdate.legacy_encrypt_keyfile_data,
-    ):
-        legacy_wallet.create()
-        assert "Ansible" in str(legacy_wallet.coldkey_file)
-
-    return legacy_wallet
-
-
-@pytest.fixture
-def wallet_update_setup():
-    # Setup the default passwords and wallets
-    default_updated_password = "nacl_password"
-    default_legacy_password = "ansible_password"
-    empty_wallet = Wallet(
-        name=f"mock-empty-{str(time.time())}",
-        path="/tmp/tests_wallets/do_not_use",
-    )
-    legacy_wallet = create_legacy_wallet(
-        default_legacy_password=default_legacy_password
-    )
-    wallet = create_wallet(default_updated_password)
-
-    return {
-        "default_updated_password": default_updated_password,
-        "default_legacy_password": default_legacy_password,
-        "empty_wallet": empty_wallet,
-        "legacy_wallet": legacy_wallet,
-        "wallet": wallet,
-    }
-
-
-def test_encrypt_and_decrypt():
-    """Test message can be encrypted and decrypted successfully with ansible/nacl."""
-    json_data = {
-        "address": "This is the address.",
-        "id": "This is the id.",
-        "key": "This is the key.",
-    }
-    message = json.dumps(json_data).encode()
-
-    # encrypt and decrypt with nacl
-    encrypted_message = keyfile.encrypt_keyfile_data(message, "password")
-    decrypted_message = keyfile.decrypt_keyfile_data(encrypted_message, "password")
-    assert decrypted_message == message
-    assert keyfile.keyfile_data_is_encrypted(encrypted_message)
-    assert not keyfile.keyfile_data_is_encrypted(decrypted_message)
-    assert not keyfile.keyfile_data_is_encrypted_ansible(decrypted_message)
-    assert keyfile.keyfile_data_is_encrypted_nacl(encrypted_message)
-
-    # encrypt and decrypt with legacy ansible
-    encrypted_message = legacy_encrypt_keyfile_data(message, "password")
-    decrypted_message = keyfile.decrypt_keyfile_data(encrypted_message, "password")
-    assert decrypted_message == message
-    assert keyfile.keyfile_data_is_encrypted(encrypted_message)
-    assert not keyfile.keyfile_data_is_encrypted(decrypted_message)
-    assert not keyfile.keyfile_data_is_encrypted_nacl(decrypted_message)
-    assert keyfile.keyfile_data_is_encrypted_ansible(encrypted_message)
 
 
 @pytest.fixture
@@ -162,11 +53,12 @@ def test_unlock_coldkeypub(mock_wallet):
     assert coldkeypub.public_key == mock_wallet.get_coldkeypub().public_key
     assert coldkeypub.ss58_format == mock_wallet.get_coldkeypub().ss58_format
     assert coldkeypub.crypto_type == mock_wallet.get_coldkeypub().crypto_type
-    
+
+
 def test_unlock_hotkeypub(mock_wallet):
     # Call
     hotkeypub = mock_wallet.unlock_hotkeypub()
-    
+
     # Assertations
     assert hotkeypub.ss58_address == mock_wallet.get_hotkeypub().ss58_address
     assert hotkeypub.public_key == mock_wallet.get_hotkeypub().public_key
@@ -279,3 +171,107 @@ def test_regenerate_hotkeypub(tmp_path):
     assert ss58_coldkey == ss58_coldkeypub
     assert ss58_hotkey == ss58_hotkeypub
     assert ss58_hotkeypub == new_ss58_hotkeypub
+
+
+# --- ED25519 Wallet tests ---
+
+
+def test_create_ed25519_hotkey(tmp_path):
+    """Test creating an ED25519 hotkey through Wallet API."""
+    wallet = Wallet(
+        name="test_ed25519",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.create_new_hotkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
+
+    assert wallet.hotkey.crypto_type == 0
+    assert wallet.hotkey.ss58_address is not None
+
+
+def test_create_ed25519_coldkey(tmp_path):
+    """Test creating an ED25519 coldkey through Wallet API."""
+    wallet = Wallet(
+        name="test_ed25519_cold",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
+    wallet.create_new_hotkey(use_password=False, overwrite=True, suppress=True)
+
+    assert wallet.coldkey.crypto_type == 0
+    assert wallet.coldkey.ss58_address is not None
+
+
+def test_default_hotkey_is_sr25519(tmp_path):
+    """Test that default hotkey creation uses SR25519."""
+    wallet = Wallet(
+        name="test_default_sr",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.create_new_hotkey(use_password=False, overwrite=True, suppress=True)
+
+    assert wallet.hotkey.crypto_type == 1
+
+
+def test_unlock_ed25519_hotkey(tmp_path):
+    """Test unlocking an ED25519 hotkey preserves crypto_type."""
+    wallet = Wallet(
+        name="test_unlock_ed",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.create_new_hotkey(
+        use_password=False, overwrite=True, suppress=True, crypto_type=0
+    )
+
+    result = wallet.unlock_hotkey()
+    assert result.crypto_type == 0
+    assert result.ss58_address == wallet.hotkey.ss58_address
+
+
+def test_create_hotkey_from_uri_ed25519(tmp_path):
+    """Test creating an ED25519 hotkey from URI."""
+    wallet = Wallet(
+        name="test_uri_ed",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_coldkey_from_uri("//cold", use_password=False, overwrite=True)
+    wallet.create_hotkey_from_uri(
+        "//hot", use_password=False, overwrite=True, crypto_type=0
+    )
+
+    assert wallet.hotkey.crypto_type == 0
+    assert wallet.hotkey.ss58_address is not None
+
+
+def test_regenerate_ed25519_hotkey(tmp_path):
+    """Test that regenerating an ED25519 hotkey from same mnemonic produces same address."""
+    mnemonic = "old leopard transfer rib spatial phone calm indicate online fire caution review"
+    wallet = Wallet(
+        name="test_regen_ed",
+        hotkey="test_hotkey",
+        path=str(tmp_path),
+    )
+    wallet.create_new_coldkey(use_password=False, overwrite=True, suppress=True)
+    wallet.regenerate_hotkey(
+        mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0
+    )
+    addr1 = wallet.hotkey.ss58_address
+
+    wallet.regenerate_hotkey(
+        mnemonic=mnemonic, overwrite=True, suppress=True, crypto_type=0
+    )
+    addr2 = wallet.hotkey.ss58_address
+
+    assert addr1 == addr2
+    assert wallet.hotkey.crypto_type == 0

@@ -52,7 +52,7 @@ jobs:
       run-cli-tests: ${{ steps.get-labels.outputs.run-cli-tests }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get labels from PR
         id: get-labels
@@ -74,15 +74,10 @@ jobs:
     outputs:
       test-files: ${{ steps.get-tests.outputs.test-files }}
     steps:
-      - name: Research preparation
-        working-directory: ${{ github.workspace }}
-        run: git clone https://github.com/opentensor/btcli.git
+      - name: Clone btcli @ staging
+        run: git clone --depth 1 --branch staging https://github.com/opentensor/btcli.git
 
-      - name: Checkout
-        working-directory: ${{ github.workspace }}/btcli
-        run: git checkout staging
-
-      - name: Install dependencies
+      - name: Install jq
         run: sudo apt-get install -y jq
 
       - name: Find e2e test files
@@ -107,7 +102,7 @@ jobs:
         run: docker save -o subtensor-localnet.tar ghcr.io/opentensor/subtensor-localnet:devnet-ready
 
       - name: Upload Docker Image as Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: subtensor-localnet
           path: subtensor-localnet.tar
@@ -138,70 +133,54 @@ jobs:
       RUST_BACKTRACE: full
       RUST_BIN_DIR: target/${{ matrix.rust-target }}
       TARGET: ${{ matrix.rust-target }}
+      VIRTUAL_ENV: ${{ github.workspace }}/btcli/.venv
 
     timeout-minutes: 60
     name: "e2e tests: ${{ matrix.test-file }}"
     steps:
-      - name: Check-out repository
-        uses: actions/checkout@v4
+      - name: Checkout PR branch of btwallet
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: btwallet
 
       - name: Install Rust stable
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.rust-branch }}
           components: rustfmt
-          profile: minimal
 
-      - name: Install rust/cargo dependencies
+      - name: Install system deps
         run: |
-          sudo apt-get update &&
+          sudo apt-get update
           sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler jq
 
-      - name: Add wasm32-unknown-unknown target
+      - name: Add wasm32 target
         run: |
           rustup target add wasm32-unknown-unknown --toolchain stable-x86_64-unknown-linux-gnu
           rustup component add rust-src --toolchain stable-x86_64-unknown-linux-gnu
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v8.0.0
+        with:
+          enable-cache: true
 
-      - name: Create Python virtual environment
-        working-directory: ${{ github.workspace }}
-        run: uv venv ${{ github.workspace }}/venv
+      - name: Clone btcli @ staging
+        run: git clone --depth 1 --branch staging https://github.com/opentensor/btcli.git
 
-      - name: Clone Bittensor CLI repo
-        working-directory: ${{ github.workspace }}
-        run: git clone https://github.com/opentensor/btcli.git
-
-      - name: Setup Bittensor-cli from cloned repo
-        working-directory: ${{ github.workspace }}/btcli
+      - name: Sync btcli env (locked) + maturin
+        working-directory: btcli
         run: |
-          source ${{ github.workspace }}/venv/bin/activate
-          git checkout staging
-          git fetch origin staging
-          uv run --active pip install --upgrade pip
-          uv run --active pip install pytest
-          uv run --active pip install maturin
-          uv run --active pip install -e .[dev]
+          uv sync --group dev
+          uv pip install maturin
+          echo "${{ github.workspace }}/btcli/.venv/bin" >> $GITHUB_PATH
 
-      - name: Clone Bittensor Wallet repo
-        run: git clone https://github.com/opentensor/btwallet.git
-
-      - name: Checkout PR branch in Wallet repo
-        working-directory: ${{ github.workspace }}/btwallet
-        run: |
-          git fetch origin ${{ github.event.pull_request.head.ref }}
-          git checkout ${{ github.event.pull_request.head.ref }}
-          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-
-      - name: Build and install Rust Bittensor Wallet package
-        working-directory: ${{ github.workspace }}
-        run: |
-          source ${{ github.workspace }}/venv/bin/activate
-          uv run --active maturin develop
+      - name: Build local btwallet into btcli venv
+        working-directory: btwallet
+        run: maturin develop
 
       - name: Download Cached Docker Image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: subtensor-localnet
 
@@ -209,10 +188,8 @@ jobs:
         run: docker load -i subtensor-localnet.tar
 
       - name: Run tests
-        working-directory: ${{ github.workspace }}
-        run: |
-          source ${{ github.workspace }}/venv/bin/activate
-          pytest ${{ matrix.test-file }} -s
+        working-directory: btcli
+        run: pytest ${{ matrix.test-file }} -s
 
 
   run-unit-test:
@@ -220,51 +197,43 @@ jobs:
       - check-labels
     if: always() && needs.check-labels.outputs.run-cli-tests == 'true'
     runs-on: ubuntu-latest
+    env:
+      VIRTUAL_ENV: ${{ github.workspace }}/btcli/.venv
     steps:
-      - name: Check-out repository
-        uses: actions/checkout@v4
+      - name: Checkout PR branch of btwallet
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: btwallet
 
-      - name: Install dependencies
+      - name: Install system deps
         run: |
-          sudo apt-get update &&
+          sudo apt-get update
           sudo apt-get install -y clang curl libssl-dev llvm libudev-dev protobuf-compiler
 
-      - name: Create Python virtual environment
-        working-directory: ${{ github.workspace }}
-        run: python3 -m venv venv
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Clone Bittensor CLI repo
-        working-directory: ${{ github.workspace }}
-        run: git clone https://github.com/opentensor/btcli.git
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.0.0
+        with:
+          enable-cache: true
 
-      - name: Setup Bittensor SDK from cloned repo
-        working-directory: ${{ github.workspace }}/btcli
+      - name: Clone btcli @ staging
+        run: git clone --depth 1 --branch staging https://github.com/opentensor/btcli.git
+
+      - name: Sync btcli env (locked) + maturin
+        working-directory: btcli
         run: |
-          source ${{ github.workspace }}/venv/bin/activate
-          git checkout staging
-          git fetch origin staging
-          python3 -m pip install --upgrade pip
-          python3 -m pip install '.[dev]'
-          python3 -m pip install maturin
+          uv sync --dev
+          uv pip install maturin
+          echo "${{ github.workspace }}/btcli/.venv/bin" >> $GITHUB_PATH
 
-      - name: Clone Bittensor Wallet repo
-        run: git clone https://github.com/opentensor/btwallet.git
+      - name: Build local btwallet into btcli venv
+        working-directory: btwallet
+        run: maturin develop
 
-      - name: Checkout PR branch in Wallet repo
-        working-directory: ${{ github.workspace }}/btwallet
-        run: |
-          git fetch origin ${{ github.event.pull_request.head.ref }}
-          git checkout ${{ github.event.pull_request.head.ref }}
-          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-
-      - name: Build and install Rust Bittensor Wallet package
-        working-directory: ${{ github.workspace }}
-        run: |
-          source ${{ github.workspace }}/venv/bin/activate
-          maturin develop
-
-      - name: Run SDK unit tests
-        working-directory: ${{ github.workspace }}
-        run: |
-          source ${{ github.workspace }}/venv/bin/activate
-          pytest ${{ github.workspace }}/btcli/tests/unit_tests
+      - name: Run unit tests
+        working-directory: btcli
+        run: pytest tests/unit_tests

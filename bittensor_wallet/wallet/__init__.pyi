@@ -26,6 +26,8 @@ class Wallet:
         hotkey_password: Optional[str] = None,
         overwrite: Optional[bool] = False,
         suppress: Optional[bool] = False,
+        coldkey_crypto_type: Optional[int] = 1,
+        hotkey_crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def create(
         self,
@@ -37,6 +39,8 @@ class Wallet:
         hotkey_password: Optional[str] = None,
         overwrite: Optional[bool] = False,
         suppress: Optional[bool] = False,
+        coldkey_crypto_type: Optional[int] = 1,
+        hotkey_crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def recreate(
         self,
@@ -48,6 +52,8 @@ class Wallet:
         hotkey_password: Optional[str] = None,
         overwrite: Optional[bool] = False,
         suppress: Optional[bool] = False,
+        coldkey_crypto_type: Optional[int] = 1,
+        hotkey_crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def get_coldkey(self, password: Optional[str] = None) -> "Keypair": ...
     def get_coldkeypub(self, password: Optional[str] = None) -> "Keypair": ...
@@ -111,6 +117,7 @@ class Wallet:
         suppress: Optional[bool] = False,
         save_coldkey_to_env: Optional[bool] = False,
         coldkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> None: ...
     def create_hotkey_from_uri(
         self,
@@ -120,6 +127,7 @@ class Wallet:
         suppress: Optional[bool] = False,
         save_hotkey_to_env: Optional[bool] = False,
         hotkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> None: ...
     def unlock_coldkey(self) -> "Keypair": ...
     def unlock_coldkeypub(self) -> "Keypair": ...
@@ -133,6 +141,7 @@ class Wallet:
         suppress: Optional[bool] = False,
         save_coldkey_to_env: Optional[bool] = False,
         coldkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def create_new_coldkey(
         self,
@@ -142,6 +151,7 @@ class Wallet:
         suppress: Optional[bool] = False,
         save_coldkey_to_env: Optional[bool] = False,
         coldkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def new_hotkey(
         self,
@@ -151,6 +161,7 @@ class Wallet:
         suppress: Optional[bool] = False,
         save_hotkey_to_env: Optional[bool] = False,
         hotkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def create_new_hotkey(
         self,
@@ -158,8 +169,9 @@ class Wallet:
         use_password: Optional[bool] = True,
         overwrite: Optional[bool] = False,
         suppress: Optional[bool] = False,
-        save_coldkey_to_env: Optional[bool] = False,
-        coldkey_password: Optional[str] = None,
+        save_hotkey_to_env: Optional[bool] = False,
+        hotkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def regenerate_coldkey(
         self,
@@ -171,12 +183,14 @@ class Wallet:
         suppress: Optional[bool] = False,
         save_coldkey_to_env: Optional[bool] = False,
         coldkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def regenerate_coldkeypub(
         self,
         ss58_address: Optional[str] = None,
         public_key: Optional[bytes] = None,
         overwrite: Optional[bool] = False,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def regenerate_hotkey(
         self,
@@ -188,10 +202,12 @@ class Wallet:
         suppress: Optional[bool] = False,
         save_hotkey_to_env: Optional[bool] = False,
         hotkey_password: Optional[str] = None,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
     def regenerate_hotkeypub(
         self,
         ss58_address: Optional[str] = None,
         public_key: Optional[bytes] = None,
         overwrite: Optional[bool] = False,
+        crypto_type: Optional[int] = 1,
     ) -> "Wallet": ...
