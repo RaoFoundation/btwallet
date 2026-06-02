@@ -54,7 +54,7 @@ jobs:
             --out dist
             --bindings pyo3
             --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
-            --features extension-module${{ matrix.platform.target == 'aarch64' && ',vendored-openssl' || '' }}
+            --features extension-module,vendored-openssl
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
