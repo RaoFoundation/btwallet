@@ -56,7 +56,7 @@ jobs:
             --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
             --features extension-module,vendored-openssl
           sccache: 'true'
-          manylinux: auto
+          manylinux: 2_28
           before-script-linux: |
             if command -v yum &> /dev/null; then
                 yum update -y && yum install -y perl-core openssl openssl-devel pkgconfig libatomic
