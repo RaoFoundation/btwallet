@@ -10,6 +10,7 @@ use sodiumoxide::crypto::sign::ed25519 as sign_ed25519;
 use sp_core::crypto::{AccountId32, Ss58Codec};
 use sp_core::{ed25519, sr25519, ByteArray, Pair};
 use std::fmt;
+use zeroize::Zeroize;
 
 use crate::constants::{CRYPTO_ED25519, CRYPTO_SR25519};
 
@@ -260,11 +261,14 @@ impl Keypair {
         };
 
         Ok(Keypair {
-            mnemonic: Some(mnemonic.to_string()),
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
             seed_hex: Some(seed_vec),
-            pair: Some(pair_inner),
             crypto_type,
-            ..Default::default()
+            mnemonic: Some(mnemonic.to_string()),
+            pair: Some(pair_inner),
         })
     }
 
@@ -293,10 +297,14 @@ impl Keypair {
         };
 
         Ok(Keypair {
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
             seed_hex: Some(seed),
-            pair: Some(pair_inner),
             crypto_type,
-            ..Default::default()
+            mnemonic: None,
+            pair: Some(pair_inner),
         })
     }
 
@@ -330,9 +338,14 @@ impl Keypair {
         };
 
         Ok(Keypair {
-            pair: Some(pair_inner),
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
+            seed_hex: None,
             crypto_type,
-            ..Default::default()
+            mnemonic: None,
+            pair: Some(pair_inner),
         })
     }
 
@@ -462,9 +475,14 @@ impl Keypair {
                 return Err("ED25519 public key mismatch in JSON.".to_string());
             }
             Ok(Keypair {
-                pair: Some(PairInner::Ed25519(pair)),
+                ss58_address: None,
+                public_key: None,
+                private_key: None,
+                ss58_format: 42,
+                seed_hex: None,
                 crypto_type: CRYPTO_ED25519,
-                ..Default::default()
+                mnemonic: None,
+                pair: Some(PairInner::Ed25519(pair)),
             })
         } else {
             Err("Unsupported keypair type.".to_string())
@@ -494,9 +512,14 @@ impl Keypair {
         };
 
         Ok(Keypair {
-            pair: Some(pair_inner),
+            ss58_address: None,
+            public_key: None,
+            private_key: None,
+            ss58_format: 42,
+            seed_hex: None,
             crypto_type,
-            ..Default::default()
+            mnemonic: None,
+            pair: Some(pair_inner),
         })
     }
 
@@ -643,7 +666,13 @@ impl Keypair {
     }
 
     /// Returns the seed bytes used to derive this keypair, if known.
+    #[cfg(feature = "secret-access")]
     pub fn seed_hex(&self) -> Option<Vec<u8>> {
+        self.seed_hex.clone()
+    }
+
+    #[cfg(not(feature = "secret-access"))]
+    pub(crate) fn seed_hex(&self) -> Option<Vec<u8>> {
         self.seed_hex.clone()
     }
 
@@ -656,13 +685,27 @@ impl Keypair {
         }
     }
 
-    /// Returns the mnemonic phrase of the keypair.
+    #[cfg(feature = "secret-access")]
     pub fn mnemonic(&self) -> Option<String> {
         self.mnemonic.clone()
     }
 
-    /// Returns the private key of the keypair as bytes.
+    #[cfg(not(feature = "secret-access"))]
+    pub(crate) fn mnemonic(&self) -> Option<String> {
+        self.mnemonic.clone()
+    }
+
+    #[cfg(feature = "secret-access")]
     pub fn private_key(&self) -> Result<Option<Vec<u8>>, String> {
+        self.private_key_inner()
+    }
+
+    #[cfg(not(feature = "secret-access"))]
+    pub(crate) fn private_key(&self) -> Result<Option<Vec<u8>>, String> {
+        self.private_key_inner()
+    }
+
+    fn private_key_inner(&self) -> Result<Option<Vec<u8>>, String> {
         match &self.pair {
             Some(pair) => {
                 let seed = pair.to_raw_vec();
@@ -670,7 +713,9 @@ impl Keypair {
             }
             None => {
                 if let Some(private_key) = &self.private_key {
-                    Ok(Some(private_key.as_bytes().to_vec()))
+                    let private_key_vec = hex::decode(private_key.trim_start_matches("0x"))
+                        .map_err(|_| "private_key field is not valid hex".to_string())?;
+                    Ok(Some(private_key_vec))
                 } else {
                     Ok(None)
                 }
@@ -691,6 +736,21 @@ impl Default for Keypair {
             mnemonic: None,
             pair: None,
         }
+    }
+}
+
+impl Drop for Keypair {
+    fn drop(&mut self) {
+        if let Some(ref mut k) = self.private_key {
+            k.zeroize();
+        }
+        if let Some(ref mut s) = self.seed_hex {
+            s.zeroize();
+        }
+        if let Some(ref mut m) = self.mnemonic {
+            m.zeroize();
+        }
+        self.pair = None;
     }
 }
 
