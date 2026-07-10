@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **This repository is archived and no longer maintained.**
+>
+> `bittensor_wallet` is superseded by `bittensor.wallet` in Bittensor 11, developed in the [subtensor monorepo](https://github.com/RaoFoundation/subtensor). The on-disk keyfile format is unchanged — existing wallets work as-is. Existing releases remain installable from PyPI.
+
 <div align="center">
 
 # Bittensor Wallet <!-- omit in toc -->
