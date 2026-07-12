@@ -1,7 +1,10 @@
-> [!IMPORTANT]
-> **This repository is archived and no longer maintained.**
->
-> `bittensor_wallet` is superseded by `bittensor.wallet` in Bittensor 11, developed in the [subtensor monorepo](https://github.com/RaoFoundation/subtensor). The on-disk keyfile format is unchanged — existing wallets work as-is. Existing releases remain installable from PyPI.
+# ⚠️ This package is superseded
+
+**`bittensor-wallet` is superseded by the [`bittensor`](https://pypi.org/project/bittensor/) package (Bittensor 11), where the wallet ships as `bittensor.wallet`.** New projects should `pip install bittensor` instead. Development happens in the [subtensor monorepo](https://github.com/RaoFoundation/subtensor), and documentation lives at [bittensor.com/docs](https://bittensor.com/docs).
+
+The on-disk keyfile format is unchanged — existing wallets work as-is. Existing `bittensor-wallet` releases remain installable from PyPI, but this repository is no longer maintained and no further feature releases will be cut from it.
+
+---
 
 <div align="center">
 
@@ -49,7 +52,7 @@ For instructions on setting up GPG key signing, see [GitHub's documentation on s
 
 ## Documentation
 
-For a full documentation on how to use `btwallet`, see the [Bittensor Wallet SDK section](https://docs.bittensor.com/working-with-keys) on the developer documentation site.
+For full documentation, see [bittensor.com/docs](https://bittensor.com/docs).
 
 ---
 
