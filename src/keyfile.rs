@@ -409,8 +409,10 @@ pub fn decrypt_keyfile_data(
         let mut key = vec![0; 32];
         kdf(password.as_bytes(), LEGACY_SALT, 10000000, &mut key);
 
-        let fernet_key = Fernet::generate_key();
-        let fernet = Fernet::new(&fernet_key).unwrap();
+        let fernet_key = general_purpose::URL_SAFE.encode(&key);
+        let fernet = Fernet::new(&fernet_key).ok_or_else(|| {
+            KeyFileError::DecryptionError("Failed to build Fernet from derived key.".to_string())
+        })?;
         let keyfile_data_str = from_utf8(keyfile_data)
             .map_err(|e| KeyFileError::DeserializationError(e.to_string()))?;
         fernet.decrypt(keyfile_data_str).map_err(|_| {
@@ -1187,5 +1189,39 @@ mod tests {
 
         let sig = restored.sign(b"cross-check".to_vec()).unwrap();
         assert!(original.verify(b"cross-check".to_vec(), sig).unwrap());
+    }
+
+    /// Regression test for issue #185: `legacy_decrypt` derived a key from the
+    /// password via PBKDF2 but then discarded it and called
+    /// `Fernet::generate_key()`, so decryption used a random key and always
+    /// failed on real legacy keyfiles. This builds a legacy (Fernet) token with
+    /// the password-derived key and asserts it round-trips back to the plaintext.
+    ///
+    /// Gated to non-`python-bindings` builds: it drives the public
+    /// `decrypt_keyfile_data`, whose call graph reaches `utils::print`. Under
+    /// `python-bindings` that routes through pyo3 (executing Python), which a
+    /// standalone Rust test binary can neither link (with `extension-module`,
+    /// libpython is intentionally not linked) nor run (no initialized Python
+    /// interpreter). With default features `utils::print` is plain Rust stdout,
+    /// so the test builds and runs normally (e.g. `cargo test`).
+    #[cfg(not(feature = "python-bindings"))]
+    #[test]
+    fn test_legacy_decrypt_uses_password_derived_key() {
+        let password = "regression-test-password-185";
+        let plaintext = b"super-secret-legacy-keyfile-contents";
+
+        // Derive the Fernet key exactly the way legacy_decrypt does.
+        let mut key = vec![0u8; 32];
+        pbkdf2::pbkdf2_hmac::<sha2::Sha256>(password.as_bytes(), LEGACY_SALT, 10_000_000, &mut key);
+        let fernet_key = general_purpose::URL_SAFE.encode(&key);
+
+        // A Fernet token starts with "gAAAAA", so it routes through the legacy
+        // path inside decrypt_keyfile_data (not NaCl or Ansible Vault).
+        let token = Fernet::new(&fernet_key).unwrap().encrypt(plaintext);
+        assert!(keyfile_data_is_encrypted_legacy(token.as_bytes()));
+
+        let decrypted =
+            decrypt_keyfile_data(token.as_bytes(), Some(password.to_string()), None).unwrap();
+        assert_eq!(decrypted.as_slice(), &plaintext[..]);
     }
 }
